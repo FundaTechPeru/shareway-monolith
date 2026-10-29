@@ -12,3 +12,8 @@ app:
     api-key: test-internal-api-key
   storage:
     path: ${java.io.tmpdir}/shareway-monolith-test/storage
+
+booking:
+  saga:
+    # The tests call SagaTimeoutService directly.
+    timeout-job-enabled: false
