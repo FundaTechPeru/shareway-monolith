@@ -6,6 +6,7 @@ import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.junit.jupiter.api.Assertions.fail;
 
+import com.fundatechperu.shareway.booking.domain.service.PaymentsPort;
 import com.fundatechperu.shareway.booking.shared.events.EventPublisher;
 import com.fundatechperu.shareway.booking.shared.events.PaymentAuthorizationFailed;
 import java.time.Instant;
@@ -30,6 +31,7 @@ import org.springframework.http.HttpMethod;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.test.context.ActiveProfiles;
+import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import tools.jackson.databind.JsonNode;
 import tools.jackson.databind.ObjectMapper;
 
@@ -47,6 +49,9 @@ class BookingIntegrationTest extends AbstractBookingIntegrationTest {
   private static final UUID PASSENGER_ID = UUID.fromString("aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee");
 
   @Autowired private TestRestTemplate rest;
+
+  /** Payments &amp; Settlement is replaced: these tests cover Booking &amp; Pricing alone. */
+  @MockitoBean private PaymentsPort paymentsPort;
 
   @Autowired private ObjectMapper objectMapper;
 
