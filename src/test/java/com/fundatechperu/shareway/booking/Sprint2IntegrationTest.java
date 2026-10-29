@@ -7,6 +7,7 @@ import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import com.fundatechperu.shareway.booking.application.service.SagaTimeoutService;
+import com.fundatechperu.shareway.booking.domain.service.PaymentsPort;
 import com.fundatechperu.shareway.booking.infrastructure.provider.SimulatedDepartureTimeProvider;
 import com.fundatechperu.shareway.booking.infrastructure.security.BoardingCodeHasher;
 import com.fundatechperu.shareway.booking.shared.events.BoardingValidated;
@@ -46,6 +47,7 @@ import org.springframework.http.HttpMethod;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.test.context.ActiveProfiles;
+import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import tools.jackson.databind.JsonNode;
 import tools.jackson.databind.ObjectMapper;
 
@@ -67,6 +69,9 @@ class Sprint2IntegrationTest extends AbstractBookingIntegrationTest {
       "La reserva ya no puede cancelarse en su estado actual";
 
   @Autowired private TestRestTemplate rest;
+
+  /** Payments &amp; Settlement is replaced: these tests cover Booking &amp; Pricing alone. */
+  @MockitoBean private PaymentsPort paymentsPort;
 
   @Autowired private ObjectMapper objectMapper;
 

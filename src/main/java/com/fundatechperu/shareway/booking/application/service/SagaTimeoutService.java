@@ -68,8 +68,8 @@ public class SagaTimeoutService {
   private void compensate(BookingSaga saga) {
     String reason =
         SagaStep.AUTHORIZE_PAYMENT.equals(saga.getCurrentStep())
-            ? "PAYMENT_TIMEOUT"
-            : "NO_DRIVER_AVAILABLE";
+            ? BookingCancelled.PAYMENT_TIMEOUT
+            : BookingCancelled.NO_DRIVER_AVAILABLE;
 
     Booking booking = bookingRepository.findById(saga.getBookingId()).orElse(null);
     if (booking != null && isCancellable(booking.getStatus())) {
@@ -88,7 +88,8 @@ public class SagaTimeoutService {
               booking.getBookingId(),
               booking.getGroupId(),
               booking.getPassengerId(),
-              false));
+              false,
+              reason));
       log.info(
           "Expired saga {} compensated: booking {} cancelled ({}).",
           saga.getSagaId(),

@@ -86,7 +86,8 @@ public class PaymentAuthorizationFailedHandler implements EventHandler {
               bookingId,
               booking.getGroupId(),
               booking.getPassengerId(),
-              false));
+              false,
+              BookingCancelled.PAYMENT_FAILED));
     }
 
     if (saga.getStatus() != BookingSaga.Status.COMPENSATED) {

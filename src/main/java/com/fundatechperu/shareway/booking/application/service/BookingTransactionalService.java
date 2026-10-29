@@ -222,7 +222,8 @@ public class BookingTransactionalService {
             bookingId,
             booking.getGroupId(),
             booking.getPassengerId(),
-            penaltyAmount != null));
+            penaltyAmount != null,
+            BookingCancelled.PASSENGER_CANCELLED));
 
     return new CancellationResponse(
         bookingId,
