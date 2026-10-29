@@ -67,6 +67,10 @@ app:
 
 # Booking & Pricing (keys kept from shareway-booking-pricing).
 booking:
+  reservation:
+    # Optimistic-lock retries when several passengers take the same seat at once.
+    max-attempts: ${BOOKING_RESERVATION_MAX_ATTEMPTS:3}
+    backoff-ms: ${BOOKING_RESERVATION_BACKOFF_MS:20}
   cancellation:
     penalty-window-minutes: ${BOOKING_CANCELLATION_PENALTY_WINDOW_MINUTES:30}
     penalty-percent: ${BOOKING_CANCELLATION_PENALTY_PERCENT:20}
