@@ -20,7 +20,8 @@ import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
  * The single security filter chain of the monolith: stateless, JWT based and closed by default.
  *
  * <p>Every bounded context contributes its role rules through {@link SecurityRules} beans; any
- * other path only requires a valid token.
+ * other path only requires a valid token. Service-to-service endpoints under {@code
+ * /api/v1/internal/**} take the internal API key instead of a user token.
  */
 @Configuration
 @EnableWebSecurity
@@ -42,7 +43,8 @@ public class SecurityConfig {
       SecurityErrorHandler errorHandler,
       JwtService jwtService,
       ObjectProvider<AuthenticatedUserResolver> userResolver,
-      ObjectProvider<SecurityRules> contextRules) {
+      ObjectProvider<SecurityRules> contextRules,
+      @Value("${app.internal.api-key}") String internalApiKey) {
     AuthenticatedUserResolver resolver = userResolver.getIfAvailable(() -> user -> user);
     return http.csrf(AbstractHttpConfigurer::disable)
         .cors(Customizer.withDefaults())
@@ -57,9 +59,15 @@ public class SecurityConfig {
         .authorizeHttpRequests(
             authorize -> {
               authorize.requestMatchers(PUBLIC_ENDPOINTS).permitAll();
+              authorize
+                  .requestMatchers(InternalApiKeyFilter.INTERNAL_PATHS)
+                  .hasRole(InternalApiKeyFilter.INTERNAL_ROLE);
               contextRules.orderedStream().forEach(rules -> rules.configure(authorize));
               authorize.anyRequest().authenticated();
             })
+        .addFilterBefore(
+            new InternalApiKeyFilter(internalApiKey, errorHandler),
+            UsernamePasswordAuthenticationFilter.class)
         .addFilterBefore(
             new JwtAuthenticationFilter(jwtService, resolver),
             UsernamePasswordAuthenticationFilter.class)
@@ -73,7 +81,12 @@ public class SecurityConfig {
     configuration.setAllowedOrigins(allowedOrigins);
     configuration.setAllowedMethods(List.of("GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"));
     configuration.setAllowedHeaders(
-        List.of("Authorization", "Content-Type", "Idempotency-Key", "X-Request-Id"));
+        List.of(
+            "Authorization",
+            "Content-Type",
+            "Idempotency-Key",
+            "X-Request-Id",
+            InternalApiKeyFilter.HEADER));
     configuration.setMaxAge(3600L);
     UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();
     source.registerCorsConfiguration("/**", configuration);
