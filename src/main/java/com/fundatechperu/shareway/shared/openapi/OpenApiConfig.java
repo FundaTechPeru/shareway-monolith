@@ -18,6 +18,7 @@ import org.springframework.context.annotation.Configuration;
 public class OpenApiConfig {
 
   public static final String BEARER_SCHEME = "bearerAuth";
+  public static final String INTERNAL_API_KEY_SCHEME = "internalApiKey";
 
   @Bean
   public OpenAPI sharewayOpenApi() {
@@ -39,7 +40,14 @@ public class OpenApiConfig {
                         .type(SecurityScheme.Type.HTTP)
                         .scheme("bearer")
                         .bearerFormat("JWT")
-                        .description("Access token returned by POST /api/v1/auth/login")))
+                        .description("Access token returned by POST /api/v1/auth/login"))
+                .addSecuritySchemes(
+                    INTERNAL_API_KEY_SCHEME,
+                    new SecurityScheme()
+                        .type(SecurityScheme.Type.APIKEY)
+                        .in(SecurityScheme.In.HEADER)
+                        .name("X-Internal-Api-Key")
+                        .description("Service-to-service key of the /api/v1/internal endpoints")))
         .addSecurityItem(new SecurityRequirement().addList(BEARER_SCHEME));
   }
 }

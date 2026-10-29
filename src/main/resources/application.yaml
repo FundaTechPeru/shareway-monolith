@@ -46,6 +46,9 @@ app:
     # No default on purpose: the application does not start without JWT_SECRET.
     secret: ${JWT_SECRET}
     expiration-minutes: ${JWT_EXPIRATION_MINUTES:60}
+  internal:
+    # Key of the service-to-service endpoints under /api/v1/internal. No default on purpose.
+    api-key: ${INTERNAL_API_KEY}
   admin:
     # Administrator account created on startup when both values are set.
     email: ${ADMIN_EMAIL:}
