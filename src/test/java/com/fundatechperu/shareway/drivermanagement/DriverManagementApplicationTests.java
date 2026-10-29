@@ -41,4 +41,22 @@ class DriverManagementApplicationTests {
         .andExpect(jsonPath("$.paths['/api/v1/drivers/me/vehicles'].post").exists())
         .andExpect(jsonPath("$.components.securitySchemes.bearerAuth.scheme").value("bearer"));
   }
+
+  @Test
+  void operationsDocumentTheirErrorResponsesWithExamples() throws Exception {
+    mockMvc
+        .perform(get("/v3/api-docs/drivermanagement"))
+        .andExpect(status().isOk())
+        .andExpect(
+            jsonPath("$.paths['/api/v1/auth/login'].post.responses['401'].content.*.example")
+                .exists())
+        .andExpect(
+            jsonPath("$.paths['/api/v1/auth/register'].post.requestBody.content.*.examples")
+                .exists())
+        .andExpect(
+            jsonPath(
+                    "$.paths['/api/v1/driver-documents/{id}/review'].patch.responses['409']"
+                        + ".content['application/json'].example")
+                .exists());
+  }
 }

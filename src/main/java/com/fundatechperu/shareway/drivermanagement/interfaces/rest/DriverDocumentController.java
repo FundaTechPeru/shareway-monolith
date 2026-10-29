@@ -6,9 +6,17 @@ import com.fundatechperu.shareway.drivermanagement.application.DriverVerificatio
 import com.fundatechperu.shareway.drivermanagement.domain.model.DocumentType;
 import com.fundatechperu.shareway.drivermanagement.interfaces.rest.dto.DocumentResponse;
 import com.fundatechperu.shareway.drivermanagement.interfaces.rest.dto.ReviewDocumentRequest;
+import com.fundatechperu.shareway.shared.openapi.ErrorExamples;
 import com.fundatechperu.shareway.shared.security.AuthenticatedUser;
+import com.fundatechperu.shareway.shared.web.ErrorResponse;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
+import io.swagger.v3.oas.annotations.media.ArraySchema;
+import io.swagger.v3.oas.annotations.media.Content;
+import io.swagger.v3.oas.annotations.media.ExampleObject;
+import io.swagger.v3.oas.annotations.media.Schema;
+import io.swagger.v3.oas.annotations.responses.ApiResponse;
+import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import java.io.IOException;
@@ -50,11 +58,47 @@ public class DriverDocumentController {
   @ResponseStatus(HttpStatus.CREATED)
   @Operation(
       summary = "Upload a verification document",
-      description = "Drivers only. Accepts PDF, JPEG or PNG files up to 5 MB.")
+      description =
+          "Drivers only. Multipart form with the document type and the file: PDF, JPEG or PNG up"
+              + " to 5 MB, checked by content type and by the first bytes of the file. The"
+              + " document starts PENDING until an administrator reviews it.")
+  @ApiResponses({
+    @ApiResponse(
+        responseCode = "201",
+        description = "Document stored and pending review",
+        content =
+            @Content(
+                schema = @Schema(implementation = DocumentResponse.class),
+                examples = @ExampleObject(value = DriverManagementExamples.DOCUMENT_RESPONSE))),
+    @ApiResponse(
+        responseCode = "400",
+        description = "Unknown type, missing or empty file, unsupported format or larger than 5 MB",
+        content =
+            @Content(
+                schema = @Schema(implementation = ErrorResponse.class),
+                examples = @ExampleObject(value = ErrorExamples.BAD_REQUEST))),
+    @ApiResponse(
+        responseCode = "401",
+        description = "Missing, invalid or expired token",
+        content =
+            @Content(
+                schema = @Schema(implementation = ErrorResponse.class),
+                examples = @ExampleObject(value = ErrorExamples.UNAUTHORIZED))),
+    @ApiResponse(
+        responseCode = "403",
+        description = "The user is not a driver",
+        content =
+            @Content(
+                schema = @Schema(implementation = ErrorResponse.class),
+                examples = @ExampleObject(value = ErrorExamples.FORBIDDEN)))
+  })
   public DocumentResponse upload(
       @Parameter(hidden = true) @AuthenticationPrincipal AuthenticatedUser principal,
-      @RequestParam("type") DocumentType type,
-      @RequestPart("file") MultipartFile file)
+      @Parameter(description = "Type of the document", example = "DRIVERS_LICENSE")
+          @RequestParam("type")
+          DocumentType type,
+      @Parameter(description = "PDF, JPEG or PNG file up to 5 MB") @RequestPart("file")
+          MultipartFile file)
       throws IOException {
     DocumentUpload upload =
         new DocumentUpload(
@@ -63,7 +107,33 @@ public class DriverDocumentController {
   }
 
   @GetMapping("/drivers/me/documents")
-  @Operation(summary = "List my documents", description = "Drivers only.")
+  @Operation(
+      summary = "List my documents",
+      description = "Drivers only. Every document uploaded by the driver, oldest first.")
+  @ApiResponses({
+    @ApiResponse(
+        responseCode = "200",
+        description = "Documents of the driver",
+        content =
+            @Content(
+                array = @ArraySchema(schema = @Schema(implementation = DocumentResponse.class)),
+                examples =
+                    @ExampleObject(value = DriverManagementExamples.DOCUMENT_LIST_RESPONSE))),
+    @ApiResponse(
+        responseCode = "401",
+        description = "Missing, invalid or expired token",
+        content =
+            @Content(
+                schema = @Schema(implementation = ErrorResponse.class),
+                examples = @ExampleObject(value = ErrorExamples.UNAUTHORIZED))),
+    @ApiResponse(
+        responseCode = "403",
+        description = "The user is not a driver",
+        content =
+            @Content(
+                schema = @Schema(implementation = ErrorResponse.class),
+                examples = @ExampleObject(value = ErrorExamples.FORBIDDEN)))
+  })
   public List<DocumentResponse> list(
       @Parameter(hidden = true) @AuthenticationPrincipal AuthenticatedUser principal) {
     return driverDocumentService.listForDriver(principal.id()).stream()
@@ -74,10 +144,49 @@ public class DriverDocumentController {
   @GetMapping("/drivers/me/documents/{id}")
   @Operation(
       summary = "Get one of my documents",
-      description = "Drivers only. Returns 404 if the document is not mine.")
+      description = "Drivers only. A document of another driver is reported as not found.")
+  @ApiResponses({
+    @ApiResponse(
+        responseCode = "200",
+        description = "Document found",
+        content =
+            @Content(
+                schema = @Schema(implementation = DocumentResponse.class),
+                examples = @ExampleObject(value = DriverManagementExamples.DOCUMENT_RESPONSE))),
+    @ApiResponse(
+        responseCode = "400",
+        description = "The id is not a UUID",
+        content =
+            @Content(
+                schema = @Schema(implementation = ErrorResponse.class),
+                examples = @ExampleObject(value = ErrorExamples.BAD_REQUEST))),
+    @ApiResponse(
+        responseCode = "401",
+        description = "Missing, invalid or expired token",
+        content =
+            @Content(
+                schema = @Schema(implementation = ErrorResponse.class),
+                examples = @ExampleObject(value = ErrorExamples.UNAUTHORIZED))),
+    @ApiResponse(
+        responseCode = "403",
+        description = "The user is not a driver",
+        content =
+            @Content(
+                schema = @Schema(implementation = ErrorResponse.class),
+                examples = @ExampleObject(value = ErrorExamples.FORBIDDEN))),
+    @ApiResponse(
+        responseCode = "404",
+        description = "Unknown document, or it belongs to another driver",
+        content =
+            @Content(
+                schema = @Schema(implementation = ErrorResponse.class),
+                examples = @ExampleObject(value = ErrorExamples.NOT_FOUND)))
+  })
   public DocumentResponse get(
       @Parameter(hidden = true) @AuthenticationPrincipal AuthenticatedUser principal,
-      @PathVariable UUID id) {
+      @Parameter(description = "Document id", example = DriverManagementExamples.DOCUMENT_ID)
+          @PathVariable
+          UUID id) {
     return DocumentResponse.from(driverDocumentService.getForDriver(principal.id(), id));
   }
 
@@ -85,11 +194,71 @@ public class DriverDocumentController {
   @Operation(
       summary = "Review a driver document",
       description =
-          "Administrators only. A reason is required to reject. Approving DRIVERS_LICENSE, "
-              + "NATIONAL_ID and CRIMINAL_RECORD verifies the driver.")
+          "Administrators only. APPROVED or REJECTED, with a reason required to reject. A document"
+              + " is reviewed once. Approving DRIVERS_LICENSE, NATIONAL_ID and CRIMINAL_RECORD"
+              + " verifies the driver and publishes DriverVerified; a rejection publishes"
+              + " DocumentRejected.",
+      requestBody =
+          @io.swagger.v3.oas.annotations.parameters.RequestBody(
+              content =
+                  @Content(
+                      examples = {
+                        @ExampleObject(
+                            name = "reject",
+                            value = DriverManagementExamples.REVIEW_REQUEST),
+                        @ExampleObject(name = "approve", value = "{\"decision\": \"APPROVED\"}")
+                      })))
+  @ApiResponses({
+    @ApiResponse(
+        responseCode = "200",
+        description = "Document reviewed",
+        content =
+            @Content(
+                schema = @Schema(implementation = DocumentResponse.class),
+                examples =
+                    @ExampleObject(value = DriverManagementExamples.REVIEWED_DOCUMENT_RESPONSE))),
+    @ApiResponse(
+        responseCode = "400",
+        description = "Unknown decision, or a rejection without reason",
+        content =
+            @Content(
+                schema = @Schema(implementation = ErrorResponse.class),
+                examples = @ExampleObject(value = ErrorExamples.BAD_REQUEST))),
+    @ApiResponse(
+        responseCode = "401",
+        description = "Missing, invalid or expired token",
+        content =
+            @Content(
+                schema = @Schema(implementation = ErrorResponse.class),
+                examples = @ExampleObject(value = ErrorExamples.UNAUTHORIZED))),
+    @ApiResponse(
+        responseCode = "403",
+        description = "The user is not an administrator",
+        content =
+            @Content(
+                schema = @Schema(implementation = ErrorResponse.class),
+                examples = @ExampleObject(value = ErrorExamples.FORBIDDEN))),
+    @ApiResponse(
+        responseCode = "404",
+        description = "Unknown document",
+        content =
+            @Content(
+                schema = @Schema(implementation = ErrorResponse.class),
+                examples = @ExampleObject(value = ErrorExamples.NOT_FOUND))),
+    @ApiResponse(
+        responseCode = "409",
+        description = "The document was already reviewed",
+        content =
+            @Content(
+                schema = @Schema(implementation = ErrorResponse.class),
+                examples =
+                    @ExampleObject(value = DriverManagementExamples.DOCUMENT_ALREADY_REVIEWED)))
+  })
   public DocumentResponse review(
       @Parameter(hidden = true) @AuthenticationPrincipal AuthenticatedUser principal,
-      @PathVariable UUID id,
+      @Parameter(description = "Document id", example = DriverManagementExamples.DOCUMENT_ID)
+          @PathVariable
+          UUID id,
       @Valid @RequestBody ReviewDocumentRequest request) {
     return DocumentResponse.from(
         driverVerificationService.review(id, principal.id(), request.decision(), request.reason()));

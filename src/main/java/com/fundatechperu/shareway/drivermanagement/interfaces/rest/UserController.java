@@ -5,9 +5,16 @@ import com.fundatechperu.shareway.drivermanagement.application.UserRegistrationS
 import com.fundatechperu.shareway.drivermanagement.interfaces.rest.dto.DriverProfileResponse;
 import com.fundatechperu.shareway.drivermanagement.interfaces.rest.dto.RegisterDriverProfileRequest;
 import com.fundatechperu.shareway.drivermanagement.interfaces.rest.dto.UserResponse;
+import com.fundatechperu.shareway.shared.openapi.ErrorExamples;
 import com.fundatechperu.shareway.shared.security.AuthenticatedUser;
+import com.fundatechperu.shareway.shared.web.ErrorResponse;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
+import io.swagger.v3.oas.annotations.media.Content;
+import io.swagger.v3.oas.annotations.media.ExampleObject;
+import io.swagger.v3.oas.annotations.media.Schema;
+import io.swagger.v3.oas.annotations.responses.ApiResponse;
+import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import org.springframework.http.HttpStatus;
@@ -34,7 +41,32 @@ public class UserController {
   }
 
   @GetMapping
-  @Operation(summary = "Get my profile")
+  @Operation(
+      summary = "Get my profile",
+      description = "Returns the account of the user identified by the bearer token.")
+  @ApiResponses({
+    @ApiResponse(
+        responseCode = "200",
+        description = "Profile of the authenticated user",
+        content =
+            @Content(
+                schema = @Schema(implementation = UserResponse.class),
+                examples = @ExampleObject(value = DriverManagementExamples.USER_RESPONSE))),
+    @ApiResponse(
+        responseCode = "401",
+        description = "Missing, invalid or expired token",
+        content =
+            @Content(
+                schema = @Schema(implementation = ErrorResponse.class),
+                examples = @ExampleObject(value = ErrorExamples.UNAUTHORIZED))),
+    @ApiResponse(
+        responseCode = "404",
+        description = "The user of the token no longer exists",
+        content =
+            @Content(
+                schema = @Schema(implementation = ErrorResponse.class),
+                examples = @ExampleObject(value = ErrorExamples.NOT_FOUND)))
+  })
   public UserResponse me(
       @Parameter(hidden = true) @AuthenticationPrincipal AuthenticatedUser principal) {
     return UserResponse.from(userProfileService.getProfile(principal.id()));
@@ -45,8 +77,48 @@ public class UserController {
   @Operation(
       summary = "Register as a driver",
       description =
-          "Changes the role to DRIVER with status PENDING_VERIFICATION. "
-              + "Returns 409 if already a driver or the license number is taken.")
+          "Turns the passenger into a DRIVER with status PENDING_VERIFICATION. The license number"
+              + " has 8 to 12 upper case letters or digits and must be unique. The new role"
+              + " applies to the next request, without logging in again.",
+      requestBody =
+          @io.swagger.v3.oas.annotations.parameters.RequestBody(
+              content =
+                  @Content(
+                      examples =
+                          @ExampleObject(
+                              name = "driver",
+                              value = DriverManagementExamples.REGISTER_DRIVER_REQUEST))))
+  @ApiResponses({
+    @ApiResponse(
+        responseCode = "201",
+        description = "Driver profile created",
+        content =
+            @Content(
+                schema = @Schema(implementation = DriverProfileResponse.class),
+                examples =
+                    @ExampleObject(value = DriverManagementExamples.DRIVER_PROFILE_RESPONSE))),
+    @ApiResponse(
+        responseCode = "400",
+        description = "Invalid license number or emergency contact",
+        content =
+            @Content(
+                schema = @Schema(implementation = ErrorResponse.class),
+                examples = @ExampleObject(value = ErrorExamples.BAD_REQUEST))),
+    @ApiResponse(
+        responseCode = "401",
+        description = "Missing, invalid or expired token",
+        content =
+            @Content(
+                schema = @Schema(implementation = ErrorResponse.class),
+                examples = @ExampleObject(value = ErrorExamples.UNAUTHORIZED))),
+    @ApiResponse(
+        responseCode = "409",
+        description = "Already a driver, or the license number is taken",
+        content =
+            @Content(
+                schema = @Schema(implementation = ErrorResponse.class),
+                examples = @ExampleObject(value = ErrorExamples.CONFLICT)))
+  })
   public DriverProfileResponse registerDriverProfile(
       @Parameter(hidden = true) @AuthenticationPrincipal AuthenticatedUser principal,
       @Valid @RequestBody RegisterDriverProfileRequest request) {
@@ -57,7 +129,31 @@ public class UserController {
   @GetMapping("/driver-profile")
   @Operation(
       summary = "Get my driver profile",
-      description = "Returns 404 if the user is not a driver.")
+      description = "Returns the license, verification status and emergency contact.")
+  @ApiResponses({
+    @ApiResponse(
+        responseCode = "200",
+        description = "Driver profile of the authenticated user",
+        content =
+            @Content(
+                schema = @Schema(implementation = DriverProfileResponse.class),
+                examples =
+                    @ExampleObject(value = DriverManagementExamples.DRIVER_PROFILE_RESPONSE))),
+    @ApiResponse(
+        responseCode = "401",
+        description = "Missing, invalid or expired token",
+        content =
+            @Content(
+                schema = @Schema(implementation = ErrorResponse.class),
+                examples = @ExampleObject(value = ErrorExamples.UNAUTHORIZED))),
+    @ApiResponse(
+        responseCode = "404",
+        description = "The user is not a driver",
+        content =
+            @Content(
+                schema = @Schema(implementation = ErrorResponse.class),
+                examples = @ExampleObject(value = ErrorExamples.NOT_FOUND)))
+  })
   public DriverProfileResponse driverProfile(
       @Parameter(hidden = true) @AuthenticationPrincipal AuthenticatedUser principal) {
     return DriverProfileResponse.from(userProfileService.getDriverProfile(principal.id()));
