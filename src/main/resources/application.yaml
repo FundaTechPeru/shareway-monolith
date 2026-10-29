@@ -41,5 +41,8 @@ app:
     # No default on purpose: the application does not start without JWT_SECRET.
     secret: ${JWT_SECRET}
     expiration-minutes: ${JWT_EXPIRATION_MINUTES:60}
+  storage:
+    # Driver documents uploaded through Driver Management.
+    path: ${STORAGE_PATH:./storage}
   cors:
     allowed-origins: ${CORS_ALLOWED_ORIGINS:http://localhost:4200,http://localhost:5173,http://localhost:3000}

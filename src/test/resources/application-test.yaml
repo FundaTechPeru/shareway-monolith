@@ -8,3 +8,5 @@ spring:
 app:
   jwt:
     secret: test-only-shareway-monolith-jwt-secret-with-32-bytes
+  storage:
+    path: ${java.io.tmpdir}/shareway-monolith-test/storage
