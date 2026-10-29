@@ -4,6 +4,9 @@ spring:
     driver-class-name: org.h2.Driver
     username: sa
     password: ""
+    hikari:
+      # Booking & Pricing runs 20 simultaneous requests in its concurrency tests.
+      maximum-pool-size: 30
 
 app:
   jwt:
@@ -12,3 +15,8 @@ app:
     api-key: test-internal-api-key
   storage:
     path: ${java.io.tmpdir}/shareway-monolith-test/storage
+
+booking:
+  saga:
+    # The tests call SagaTimeoutService directly.
+    timeout-job-enabled: false
