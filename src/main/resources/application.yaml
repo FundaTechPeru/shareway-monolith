@@ -5,6 +5,10 @@ spring:
     url: ${DB_URL:jdbc:postgresql://localhost:5432/shareway}
     username: ${DB_USER:shareway}
     password: ${DB_PASSWORD:shareway}
+  servlet:
+    multipart:
+      max-file-size: 5MB
+      max-request-size: 10MB
   jpa:
     open-in-view: false
     hibernate:
@@ -18,6 +22,7 @@ server:
   port: ${SERVER_PORT:8080}
 
 springdoc:
+  default-produces-media-type: application/json
   api-docs:
     path: /v3/api-docs
   swagger-ui:
@@ -41,5 +46,12 @@ app:
     # No default on purpose: the application does not start without JWT_SECRET.
     secret: ${JWT_SECRET}
     expiration-minutes: ${JWT_EXPIRATION_MINUTES:60}
+  admin:
+    # Administrator account created on startup when both values are set.
+    email: ${ADMIN_EMAIL:}
+    password: ${ADMIN_PASSWORD:}
+  storage:
+    # Driver documents uploaded through Driver Management.
+    path: ${STORAGE_PATH:./storage}
   cors:
     allowed-origins: ${CORS_ALLOWED_ORIGINS:http://localhost:4200,http://localhost:5173,http://localhost:3000}
