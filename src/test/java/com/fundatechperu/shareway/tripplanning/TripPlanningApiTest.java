@@ -111,6 +111,19 @@ class TripPlanningApiTest {
         .andExpect(jsonPath("$.openapi").value("/v3/api-docs/tripplanning"));
   }
 
+  @Test
+  void openApiGroupDocumentsResponsesWithExamples() throws Exception {
+    String proposals = "$.paths['/api/v1/trip-requests/{tripRequestId}/match-proposals']";
+    mockMvc
+        .perform(get("/v3/api-docs/tripplanning"))
+        .andExpect(status().isOk())
+        .andExpect(
+            jsonPath("$.paths['/api/v1/trip-requests'].post.requestBody.content.*.examples")
+                .exists())
+        .andExpect(jsonPath(proposals + ".post.responses['404'].content.*.example").exists())
+        .andExpect(jsonPath("$.paths['/api/v1/info'].get.responses['200']").exists());
+  }
+
   private String createTripRequest() throws Exception {
     String body =
         mockMvc
