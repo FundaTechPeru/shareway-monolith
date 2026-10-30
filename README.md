@@ -105,6 +105,8 @@ events that Booking & Pricing consumes from contexts outside the monolith.
 | `PENALTY_RATE` / `PENALTY_WINDOW_MINUTES` | `0.50` / `30` | Penalty charged by Payments & Settlement |
 | `BOOKING_*` | see `application.yaml` | Booking saga timeouts, retries, simulated departure and Booking & Pricing penalty |
 | `DRIVER_MANAGEMENT_URL` | empty | Base URL of the extracted Driver Management service; when set, the current role of each user is asked to it, otherwise the token claims are used as they are |
+| `PAYMENTS_SETTLEMENT_URL` | empty | Base URL of the extracted Payments & Settlement service; when set, Booking & Pricing asks it for payment authorizations and reports cancellations over HTTP |
+| `PAYMENTS_SETTLEMENT_API_KEY` | `INTERNAL_API_KEY` | `X-Internal-Api-Key` of the internal endpoints of Payments & Settlement |
 | `SERVICES_TIMEOUT_MS` | `3000` | Connect and read timeout of every call to an extracted service |
 
 ## Tests

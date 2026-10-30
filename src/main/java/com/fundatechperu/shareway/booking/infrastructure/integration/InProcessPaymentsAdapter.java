@@ -7,14 +7,17 @@ import java.math.BigDecimal;
 import java.time.Clock;
 import java.time.Instant;
 import java.util.UUID;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnExpression;
 import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Component;
 
 /**
  * {@link PaymentsPort} for the monolith: publishes integration events that Payments &amp;
- * Settlement consumes once the booking transaction commits.
+ * Settlement consumes once the booking transaction commits. {@link HttpPaymentsAdapter} takes its
+ * place when {@code app.services.payments-settlement.url} is set.
  */
 @Component
+@ConditionalOnExpression("'${app.services.payments-settlement.url:}'.isBlank()")
 public class InProcessPaymentsAdapter implements PaymentsPort {
 
   private final ApplicationEventPublisher publisher;
