@@ -13,7 +13,6 @@ import java.util.UUID;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
-import org.springframework.boot.autoconfigure.condition.ConditionalOnExpression;
 import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.core.ParameterizedTypeReference;
 import org.springframework.http.HttpHeaders;
@@ -32,9 +31,9 @@ import org.springframework.web.context.request.RequestContextHolder;
 import org.springframework.web.context.request.ServletRequestAttributes;
 
 /**
- * {@link PaymentsPort} for the extracted Payments &amp; Settlement service, active when {@code
- * app.services.payments-settlement.url} is set. Like the in-process adapter, both calls run once
- * the booking transaction commits, so a failure never rolls the booking back.
+ * {@link PaymentsPort} for the extracted Payments &amp; Settlement service at {@code
+ * app.services.payments-settlement.url}. Both calls run once the booking transaction commits, so a
+ * failure never rolls the booking back.
  *
  * <p>The internal authorization endpoint needs a card, which Booking &amp; Pricing does not know:
  * the adapter lists the active cards of the passenger with the passenger's own token ({@code GET
@@ -43,7 +42,6 @@ import org.springframework.web.context.request.ServletRequestAttributes;
  * moves the booking saga.
  */
 @Component
-@ConditionalOnExpression("!'${app.services.payments-settlement.url:}'.isBlank()")
 public class HttpPaymentsAdapter implements PaymentsPort {
 
   static final String API_KEY_HEADER = "X-Internal-Api-Key";

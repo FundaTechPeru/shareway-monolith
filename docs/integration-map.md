@@ -94,7 +94,9 @@ can only be simulated with `POST /dev/events` under the `dev` profile.
 
 ## Extraction checklist (phase C)
 
-Extracted so far: **Driver Management** (rows 5 and 6).
+Extracted so far: **Driver Management** (rows 5 and 6) and **Payments & Settlement** (rows 1 to
+4: `HttpPaymentsAdapter` is now the only `PaymentsPort`, and the in-process adapters, listeners
+and events of rows 1 to 3 left with the module).
 
 1. Add a REST client adapter behind the outbound port of the caller (for Payments & Settlement:
    `PaymentsPort` calling the internal endpoints with `X-Internal-Api-Key`).

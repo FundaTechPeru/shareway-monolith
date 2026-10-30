@@ -20,7 +20,7 @@ class OpenApiConfigTest {
   @Autowired private MockMvc mockMvc;
 
   @ParameterizedTest
-  @ValueSource(strings = {"tripplanning", "booking", "payments"})
+  @ValueSource(strings = {"tripplanning", "booking"})
   void everyGroupCarriesTheInfoAndTheBearerScheme(String group) throws Exception {
     mockMvc
         .perform(get("/v3/api-docs/" + group))
