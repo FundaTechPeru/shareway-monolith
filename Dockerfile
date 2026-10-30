@@ -13,12 +13,9 @@ RUN ./mvnw -B -q package -DskipTests
 FROM eclipse-temurin:25-jre
 WORKDIR /app
 RUN groupadd --system shareway \
-    && useradd --system --gid shareway --home-dir /app shareway \
-    && mkdir -p /app/storage \
-    && chown shareway:shareway /app/storage
+    && useradd --system --gid shareway --home-dir /app shareway
 COPY --from=build /workspace/target/shareway-monolith-*.jar /app/shareway-monolith.jar
 USER shareway
-ENV SERVER_PORT=8080 \
-    STORAGE_PATH=/app/storage
+ENV SERVER_PORT=8080
 EXPOSE 8080
 ENTRYPOINT ["java", "-jar", "/app/shareway-monolith.jar"]

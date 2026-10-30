@@ -29,9 +29,10 @@ public class OpenApiConfig {
                 .version("0.1.0")
                 .description(
                     "Scheduled shared rides for university students with verified drivers. "
-                        + "One document per bounded context: Driver Management, Trip Planning & "
-                        + "Matching, Booking & Pricing and Payments & Settlement. Log in with "
-                        + "POST /api/v1/auth/login and use the accessToken with Authorize."))
+                        + "One document per bounded context: Trip Planning & Matching, Booking & "
+                        + "Pricing and Payments & Settlement. Log in with POST /api/v1/auth/login "
+                        + "of Driver Management (through the API gateway) and use the accessToken "
+                        + "with Authorize."))
         .components(
             new Components()
                 .addSecuritySchemes(
@@ -40,7 +41,8 @@ public class OpenApiConfig {
                         .type(SecurityScheme.Type.HTTP)
                         .scheme("bearer")
                         .bearerFormat("JWT")
-                        .description("Access token returned by POST /api/v1/auth/login"))
+                        .description(
+                            "Access token returned by POST /api/v1/auth/login of Driver Management"))
                 .addSecuritySchemes(
                     INTERNAL_API_KEY_SCHEME,
                     new SecurityScheme()

@@ -26,7 +26,7 @@ is extracted to its own service (Strangler Fig, phase C).
 | 3 | Booking & Pricing | Payments & Settlement | `booking.domain.service.PaymentsPort#notifyCancellation` | `booking.infrastructure.integration.InProcessPaymentsAdapter` | `BookingCancelledEvent` | `POST /api/v1/internal/events/booking-cancelled` |
 | 4 | Trip Execution (C#, external) | Payments & Settlement | — | — | HTTP | Unchanged: `POST /api/v1/internal/events/trip-completed` with `X-Internal-Api-Key` |
 | 5 | Driver Management | every context | — | `shared.security` | JWT (subject and `userId` = user UUID, `role` and `email` claims) | Every service validates the same HS256 token with `JWT_SECRET`; Driver Management keeps issuing it |
-| 6 | Driver Management | every context | `shared.security.AuthenticatedUserResolver` | `drivermanagement.infrastructure.security.CurrentUserResolver` | In-process call | `shared.security.DriverManagementUserResolver`: `GET /api/v1/users/me` with the caller's token (`DRIVER_MANAGEMENT_URL`); the token claims when the service does not answer |
+| 6 | Driver Management | every context | `shared.security.AuthenticatedUserResolver` | `drivermanagement.infrastructure.security.CurrentUserResolver` (removed with the module) | In-process call | `shared.security.DriverManagementUserResolver`: `GET /api/v1/users/me` with the caller's token (`DRIVER_MANAGEMENT_URL`); the token claims when the service does not answer |
 
 ### 1-3. Booking saga and payments
 
@@ -86,6 +86,8 @@ can only be simulated with `POST /dev/events` under the `dev` profile.
 | Booking & Pricing | `SeatHeld`, `BookingConfirmed`, `FinalFareCalculated` | None (BookingConfirmed carries the boarding codes for a future notification service) |
 
 ## Extraction checklist (phase C)
+
+Extracted so far: **Driver Management** (rows 5 and 6).
 
 1. Add a REST client adapter behind the outbound port of the caller (for Payments & Settlement:
    `PaymentsPort` calling the internal endpoints with `X-Internal-Api-Key`).
