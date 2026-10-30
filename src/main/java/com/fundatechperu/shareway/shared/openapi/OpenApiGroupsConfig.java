@@ -13,18 +13,7 @@ import org.springframework.context.annotation.Configuration;
 @Configuration
 public class OpenApiGroupsConfig {
 
-  public static final String TRIP_PLANNING = "tripplanning";
   public static final String BOOKING = "booking";
-
-  @Bean
-  public GroupedOpenApi tripPlanningApi() {
-    return GroupedOpenApi.builder()
-        .group(TRIP_PLANNING)
-        .displayName("Trip Planning & Matching")
-        .pathsToMatch(
-            "/api/v1/trip-requests/**", "/api/v1/driver-availabilities/**", "/api/v1/info")
-        .build();
-  }
 
   @Bean
   public GroupedOpenApi bookingApi() {

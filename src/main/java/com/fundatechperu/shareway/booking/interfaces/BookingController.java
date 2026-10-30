@@ -86,7 +86,9 @@ public class BookingController {
                 examples = @ExampleObject(value = ErrorExamples.UNAUTHORIZED))),
     @ApiResponse(
         responseCode = "404",
-        description = "Group not found in seat inventories, or no fare rule valid today",
+        description =
+            "Trip request not found for the passenger, group not found in seat inventories, or no"
+                + " fare rule valid today",
         content =
             @Content(
                 schema = @Schema(implementation = ErrorResponse.class),

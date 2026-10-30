@@ -29,10 +29,9 @@ public class OpenApiConfig {
                 .version("0.1.0")
                 .description(
                     "Scheduled shared rides for university students with verified drivers. "
-                        + "One document per bounded context: Trip Planning & Matching and "
-                        + "Booking & Pricing. Log in with POST /api/v1/auth/login "
-                        + "of Driver Management (through the API gateway) and use the accessToken "
-                        + "with Authorize."))
+                        + "Booking & Pricing, the bounded context still in the monolith. Log in "
+                        + "with POST /api/v1/auth/login of Driver Management (through the API "
+                        + "gateway) and use the accessToken with Authorize."))
         .components(
             new Components()
                 .addSecuritySchemes(

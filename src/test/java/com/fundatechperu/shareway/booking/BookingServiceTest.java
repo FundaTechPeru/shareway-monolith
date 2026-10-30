@@ -21,8 +21,10 @@ import com.fundatechperu.shareway.booking.application.service.BookingTransaction
 import com.fundatechperu.shareway.booking.domain.exception.BookingNotFoundException;
 import com.fundatechperu.shareway.booking.domain.exception.InvalidBookingRequestException;
 import com.fundatechperu.shareway.booking.domain.exception.NoSeatsAvailableException;
+import com.fundatechperu.shareway.booking.domain.exception.TripRequestNotFoundException;
 import com.fundatechperu.shareway.booking.domain.model.BookingStatus;
 import com.fundatechperu.shareway.booking.domain.repository.BookingRepository;
+import com.fundatechperu.shareway.booking.domain.service.TripRequestsPort;
 import java.util.Optional;
 import java.util.UUID;
 import org.junit.jupiter.api.BeforeEach;
@@ -43,12 +45,25 @@ class BookingServiceTest {
   private final BookingTransactionalService transactionalService =
       mock(BookingTransactionalService.class);
   private final BookingRepository bookingRepository = mock(BookingRepository.class);
+  private final TripRequestsPort tripRequests = mock(TripRequestsPort.class);
 
   private BookingService service;
 
   @BeforeEach
   void setUp() {
-    service = new BookingService(transactionalService, bookingRepository, 3, 1);
+    service = new BookingService(transactionalService, bookingRepository, tripRequests, 3, 1);
+    when(tripRequests.belongsTo(any(), eq(PASSENGER_ID))).thenReturn(true);
+  }
+
+  @Test
+  void rejectsATripRequestThatIsNotOfThePassenger() {
+    CreateBookingRequest request = request();
+    when(tripRequests.belongsTo(request.getRequestId(), PASSENGER_ID)).thenReturn(false);
+
+    assertThrows(
+        TripRequestNotFoundException.class,
+        () -> service.createBooking(request, PASSENGER_ID, null));
+    verifyNoInteractions(transactionalService);
   }
 
   private CreateBookingRequest request() {

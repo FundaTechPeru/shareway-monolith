@@ -35,9 +35,6 @@ class OpenApiDocumentationTest {
   static Stream<Arguments> groups() {
     return Stream.of(
         Arguments.of(
-            "tripplanning",
-            List.of("/api/v1/trip-requests", "/api/v1/driver-availabilities", "/api/v1/info")),
-        Arguments.of(
             "booking", List.of("/api/v1/bookings", "/api/v1/fares/", "/api/v1/fare-rules")));
   }
 

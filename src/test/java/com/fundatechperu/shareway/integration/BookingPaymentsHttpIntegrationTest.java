@@ -1,9 +1,12 @@
 package com.fundatechperu.shareway.integration;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.BDDMockito.given;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
+import com.fundatechperu.shareway.booking.domain.service.TripRequestsPort;
 import com.fundatechperu.shareway.shared.security.AuthenticatedUser;
 import com.fundatechperu.shareway.shared.security.JwtService;
 import com.fundatechperu.shareway.shared.security.UserRole;
@@ -30,6 +33,7 @@ import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.context.DynamicPropertyRegistry;
 import org.springframework.test.context.DynamicPropertySource;
+import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
 
 /**
@@ -51,6 +55,9 @@ class BookingPaymentsHttpIntegrationTest {
   @Autowired private MockMvc mockMvc;
   @Autowired private JdbcTemplate jdbcTemplate;
   @Autowired private JwtService jwtService;
+
+  /** Every requestId counts as a trip request of the passenger. */
+  @MockitoBean private TripRequestsPort tripRequestsPort;
 
   private UUID passengerId;
   private UUID groupId;
@@ -79,6 +86,7 @@ class BookingPaymentsHttpIntegrationTest {
         "INSERT INTO bp.seat_inventories (group_id, capacity, available_seats) VALUES (?, 4, 4)",
         groupId);
     payments.reset();
+    given(tripRequestsPort.belongsTo(any(), any())).willReturn(true);
   }
 
   @Test

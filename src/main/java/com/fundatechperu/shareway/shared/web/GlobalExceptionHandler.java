@@ -3,6 +3,7 @@ package com.fundatechperu.shareway.shared.web;
 import com.fundatechperu.shareway.shared.exception.ConflictException;
 import com.fundatechperu.shareway.shared.exception.DomainValidationException;
 import com.fundatechperu.shareway.shared.exception.ResourceNotFoundException;
+import com.fundatechperu.shareway.shared.exception.ServiceUnavailableException;
 import com.fundatechperu.shareway.shared.web.ErrorResponse.FieldErrorDetail;
 import jakarta.persistence.EntityNotFoundException;
 import jakarta.servlet.http.HttpServletRequest;
@@ -125,8 +126,7 @@ public class GlobalExceptionHandler {
   @ExceptionHandler(MethodArgumentTypeMismatchException.class)
   public ResponseEntity<ErrorResponse> handleTypeMismatch(
       MethodArgumentTypeMismatchException ex, HttpServletRequest request) {
-    String message =
-        "Invalid value '%s' for parameter '%s'".formatted(ex.getValue(), ex.getName());
+    String message = "Invalid value '%s' for parameter '%s'".formatted(ex.getValue(), ex.getName());
     return build(
         HttpStatus.BAD_REQUEST,
         message,
@@ -202,6 +202,12 @@ public class GlobalExceptionHandler {
   public ResponseEntity<ErrorResponse> handleNoResource(
       NoResourceFoundException ex, HttpServletRequest request) {
     return build(HttpStatus.NOT_FOUND, "Resource not found", request, List.of());
+  }
+
+  @ExceptionHandler(ServiceUnavailableException.class)
+  public ResponseEntity<ErrorResponse> handleServiceUnavailable(
+      ServiceUnavailableException ex, HttpServletRequest request) {
+    return build(HttpStatus.SERVICE_UNAVAILABLE, ex.getMessage(), request, List.of());
   }
 
   @ExceptionHandler(ConflictException.class)

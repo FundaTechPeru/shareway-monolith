@@ -24,9 +24,7 @@ class OpenApiGroupsTest {
     mockMvc
         .perform(get("/v3/api-docs/swagger-config"))
         .andExpect(status().isOk())
-        .andExpect(
-            jsonPath("$.urls[*].url")
-                .value(containsInAnyOrder("/v3/api-docs/tripplanning", "/v3/api-docs/booking")));
+        .andExpect(jsonPath("$.urls[*].url").value(containsInAnyOrder("/v3/api-docs/booking")));
   }
 
   @Test
