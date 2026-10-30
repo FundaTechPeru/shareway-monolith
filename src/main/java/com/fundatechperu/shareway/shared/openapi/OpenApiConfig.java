@@ -26,7 +26,7 @@ public class OpenApiConfig {
         .info(
             new Info()
                 .title("ShareWay Monolith")
-                .version("0.1.0")
+                .version("0.2.0")
                 .description(
                     "Scheduled shared rides for university students with verified drivers. "
                         + "Booking & Pricing, the bounded context still in the monolith. Log in "
