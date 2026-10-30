@@ -31,3 +31,9 @@ build/
 
 ### VS Code ###
 .vscode/
+
+### Local document storage ###
+/storage/
+
+### Local environment ###
+.env

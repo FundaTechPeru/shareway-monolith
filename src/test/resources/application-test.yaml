@@ -1,0 +1,22 @@
+spring:
+  datasource:
+    url: jdbc:h2:mem:shareway_test;MODE=PostgreSQL;DATABASE_TO_LOWER=TRUE;DEFAULT_NULL_ORDERING=HIGH;DB_CLOSE_DELAY=-1
+    driver-class-name: org.h2.Driver
+    username: sa
+    password: ""
+    hikari:
+      # Booking & Pricing runs 20 simultaneous requests in its concurrency tests.
+      maximum-pool-size: 30
+
+app:
+  jwt:
+    secret: test-only-shareway-monolith-jwt-secret-with-32-bytes
+  internal:
+    api-key: test-internal-api-key
+  storage:
+    path: ${java.io.tmpdir}/shareway-monolith-test/storage
+
+booking:
+  saga:
+    # The tests call SagaTimeoutService directly.
+    timeout-job-enabled: false
