@@ -7,29 +7,15 @@ import org.springframework.context.annotation.Configuration;
 /**
  * One OpenAPI document per bounded context, served at {@code /v3/api-docs/<group>}.
  *
- * <p>The path prefixes match the route table of the API gateway, so when a context is extracted
- * the gateway can swap this group for the {@code /v3/api-docs} of the new service.
+ * <p>The path prefixes match the route table of the API gateway, so when a context is extracted the
+ * gateway can swap this group for the {@code /v3/api-docs} of the new service.
  */
 @Configuration
 public class OpenApiGroupsConfig {
 
-  public static final String DRIVER_MANAGEMENT = "drivermanagement";
   public static final String TRIP_PLANNING = "tripplanning";
   public static final String BOOKING = "booking";
   public static final String PAYMENTS = "payments";
-
-  @Bean
-  public GroupedOpenApi driverManagementApi() {
-    return GroupedOpenApi.builder()
-        .group(DRIVER_MANAGEMENT)
-        .displayName("Driver Management")
-        .pathsToMatch(
-            "/api/v1/auth/**",
-            "/api/v1/users/**",
-            "/api/v1/drivers/**",
-            "/api/v1/driver-documents/**")
-        .build();
-  }
 
   @Bean
   public GroupedOpenApi tripPlanningApi() {

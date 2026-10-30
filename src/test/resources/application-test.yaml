@@ -13,8 +13,6 @@ app:
     secret: test-only-shareway-monolith-jwt-secret-with-32-bytes
   internal:
     api-key: test-internal-api-key
-  storage:
-    path: ${java.io.tmpdir}/shareway-monolith-test/storage
 
 booking:
   saga:

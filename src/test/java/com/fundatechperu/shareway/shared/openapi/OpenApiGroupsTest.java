@@ -28,7 +28,6 @@ class OpenApiGroupsTest {
             jsonPath("$.urls[*].url")
                 .value(
                     containsInAnyOrder(
-                        "/v3/api-docs/drivermanagement",
                         "/v3/api-docs/tripplanning",
                         "/v3/api-docs/booking",
                         "/v3/api-docs/payments")));

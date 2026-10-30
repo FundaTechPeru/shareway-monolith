@@ -10,13 +10,20 @@ in front of it, then each bounded context is extracted back to its own service.
 
 | Context | Package | Schema | OpenAPI group | Paths | Imported from |
 |---|---|---|---|---|---|
-| Driver Management | `drivermanagement` | `dm` | `drivermanagement` | `/api/v1/auth`, `/api/v1/users`, `/api/v1/drivers`, `/api/v1/driver-documents` | `shareway-driver-management-service` |
 | Trip Planning & Matching | `tripplanning` | `tpm` | `tripplanning` | `/api/v1/trip-requests`, `/api/v1/driver-availabilities`, `/api/v1/info` | `shareway-trip-planning-matching-service` |
 | Booking & Pricing | `booking` (with `booking.pricing`) | `bp` | `booking` | `/api/v1/bookings`, `/api/v1/fares`, `/api/v1/fare-rules` | `shareway-booking-pricing` |
 | Payments & Settlement | `payments` | `ps` | `payments` | `/api/v1/payments`, `/api/v1/payment-methods`, `/api/v1/settlements`, `/api/v1/admin/settlements`, `/api/v1/internal/**` | `shareway-payments-settlement-service` |
 
 Trip Execution (`shareway-trip-execution-service`, C#) is **not** part of the monolith: the gateway
 routes `/api/v1/trips` straight to it.
+
+### Extracted contexts
+
+| Context | Service | Paths now served by the service | Monolith side |
+|---|---|---|---|
+| Driver Management | [`shareway-driver-management-service`](https://github.com/FundaTechPeru/shareway-driver-management-service) | `/api/v1/auth`, `/api/v1/users`, `/api/v1/drivers`, `/api/v1/driver-documents` | Validates its tokens with `JWT_SECRET`; asks it the current role of each user when `DRIVER_MANAGEMENT_URL` is set |
+
+Its tables (`dm` schema) stay in the database, untouched, until the service owns its own database.
 
 ## Architecture
 
@@ -28,7 +35,6 @@ com.fundatechperu.shareway
 │   ├── exception          not found (404), conflict (409), domain validation (400)
 │   ├── openapi            global info, bearer scheme and one group per context
 │   └── integration        events that cross a context boundary (published language)
-├── drivermanagement       domain · application · infrastructure · interfaces
 ├── tripplanning           domain · application · infrastructure · interfaces
 ├── booking                domain · application · infrastructure · interfaces · pricing
 └── payments               domain · application · infrastructure · interfaces
@@ -37,13 +43,14 @@ com.fundatechperu.shareway
 - **Layers.** Every context keeps the layers it had as a service: `domain` (model, events and the
   ports it needs), `application` (use cases), `infrastructure` (adapters: JPA, storage, gateway,
   messaging) and `interfaces` (REST controllers, in-process listeners).
-- **One database, one schema per context.** PostgreSQL with the `dm`, `tpm`, `bp` and `ps` schemas.
+- **One database, one schema per context.** PostgreSQL with the `tpm`, `bp` and `ps` schemas (plus
+  the `dm` schema left behind by Driver Management).
   Flyway is the only owner of the schema (`ddl-auto=validate`): `V1` creates the schemas and each
   context adds its own scripts. Tables never reference another schema.
 - **Identifiers.** Every id is a UUID, including the references between contexts (`driverId`,
   `passengerId`, `bookingId`, `tripId`…) and the JWT subject.
-- **Security.** One filter chain in `shared.security`. Driver Management issues the tokens at login;
-  every request is authenticated by the same filter. Each context contributes its role rules with
+- **Security.** One filter chain in `shared.security`. The extracted Driver Management service
+  issues the tokens at login; every request is authenticated by the same filter. Each context contributes its role rules with
   a `SecurityRules` bean. Service-to-service endpoints under `/api/v1/internal/**` take the
   `X-Internal-Api-Key` header instead of a token.
 - **Integration.** Contexts never call each other's classes. They use ports implemented with Spring
@@ -78,9 +85,9 @@ The `dev` profile (`SPRING_PROFILES_ACTIVE=dev`) adds `POST /dev/events`, which 
 events that Booking & Pricing consumes from contexts outside the monolith.
 
 - Swagger UI: http://localhost:8080/swagger-ui.html (choose the context in the selector, log in
-  with `POST /api/v1/auth/login` and paste the `accessToken` in **Authorize**)
-- OpenAPI documents: `/v3/api-docs/drivermanagement`, `/v3/api-docs/tripplanning`,
-  `/v3/api-docs/booking`, `/v3/api-docs/payments`
+  with `POST /api/v1/auth/login` of Driver Management, through the gateway, and paste the
+  `accessToken` in **Authorize**)
+- OpenAPI documents: `/v3/api-docs/tripplanning`, `/v3/api-docs/booking`, `/v3/api-docs/payments`
 - Health: http://localhost:8080/actuator/health
 
 ### Configuration
@@ -94,11 +101,11 @@ events that Booking & Pricing consumes from contexts outside the monolith.
 | `JWT_EXPIRATION_MINUTES` | `60` | Lifetime of the access tokens |
 | `INTERNAL_API_KEY` | none, required | Key of `/api/v1/internal/**` |
 | `CORS_ALLOWED_ORIGINS` | `http://localhost:4200,http://localhost:5173,http://localhost:3000` | Allowed browser origins |
-| `STORAGE_PATH` | `./storage` | Directory of the uploaded driver documents |
-| `ADMIN_EMAIL` / `ADMIN_PASSWORD` | empty | Administrator created on startup when both are set |
 | `COMMISSION_RATE` | `0.15` | Platform commission over the gross amount of a trip |
 | `PENALTY_RATE` / `PENALTY_WINDOW_MINUTES` | `0.50` / `30` | Penalty charged by Payments & Settlement |
 | `BOOKING_*` | see `application.yaml` | Booking saga timeouts, retries, simulated departure and Booking & Pricing penalty |
+| `DRIVER_MANAGEMENT_URL` | empty | Base URL of the extracted Driver Management service; when set, the current role of each user is asked to it, otherwise the token claims are used as they are |
+| `SERVICES_TIMEOUT_MS` | `3000` | Connect and read timeout of every call to an extracted service |
 
 ## Tests
 
@@ -107,8 +114,8 @@ events that Booking & Pricing consumes from contexts outside the monolith.
 ```
 
 The tests need no database server: they use H2 in PostgreSQL mode, and Flyway creates the four
-schemas as in production. They include the Cucumber acceptance suites of Driver Management
-(`features/drivermanagement`) and Payments & Settlement (`features/payments`), the unit and
+schemas as in production. They include the Cucumber acceptance suite of Payments & Settlement
+(`features/payments`), the unit and
 integration tests of Booking & Pricing (including its concurrency checks) and Trip Planning,
 the in-process integration between booking and payments, and a check that every OpenAPI
 operation is documented with its responses and examples.
@@ -120,10 +127,10 @@ Where the plan left room, the simplest option was taken:
 - **Booking passenger.** Booking & Pricing trusted an `X-User-Id` header set by a gateway. The
   passenger is now the subject of the JWT, like in the other contexts.
 - **Fare rule ids** became UUIDs as well, so no entity keeps a numeric id.
-- **Role changes.** Driver Management reloads the user on every request (`CurrentUserResolver`),
-  so a passenger who registers as a driver does not need to log in again. Users unknown to it keep
-  the claims of their token, which is what every context will do once Driver Management is
-  extracted.
+- **Role changes.** The monolith asks Driver Management for the current user on every request
+  (`DriverManagementUserResolver`), so a passenger who registers as a driver does not need to log
+  in again. Without `DRIVER_MANAGEMENT_URL`, or when the service does not answer, the claims of the
+  token are used.
 - **Errors.** All contexts answer with the Driver Management error body (`timestamp`, `status`,
   `error`, `message`, `path`, `fieldErrors`); Booking & Pricing used a smaller one.
 - **Trip Planning** had no authentication: its endpoints now require a token, but the
@@ -144,7 +151,7 @@ Where the plan left room, the simplest option was taken:
 ## Known issues
 
 - **DriverAvailability exists twice (US-19).** Driver Management keeps the weekly schedule of a
-  driver (`dm.driver_availabilities`, `/api/v1/drivers/me/availability`) and Trip Planning keeps
+  driver (its own service, `/api/v1/drivers/me/availability`) and Trip Planning keeps
   dated availability for matching (`tpm.driver_availabilities`, `/api/v1/driver-availabilities`).
   Both are kept on purpose: the schemas avoid the table collision and the Trip Planning entity has
   its own JPA name (`TripPlanningDriverAvailability`). Matching does not read the weekly schedule
@@ -161,6 +168,7 @@ Where the plan left room, the simplest option was taken:
   the departure 120 minutes ahead (`BOOKING_DEPARTURE_SIMULATED_OFFSET_MINUTES`).
 - Any authenticated user can read a booking by id; only its passenger can cancel it.
 - `/api/v1/info` is not in the gateway route table, so it is only reachable on the monolith.
+- The Docker image is built by the CI workflow; it was not built on the development machine.
 
 ## Contributing
 

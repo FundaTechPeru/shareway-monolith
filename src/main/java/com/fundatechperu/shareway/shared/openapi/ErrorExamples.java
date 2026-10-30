@@ -10,8 +10,8 @@ public final class ErrorExamples {
         "status": 400,
         "error": "Bad Request",
         "message": "Validation failed",
-        "path": "/api/v1/auth/register",
-        "fieldErrors": [{"field": "email", "message": "must be a well-formed email address"}]
+        "path": "/api/v1/bookings",
+        "fieldErrors": [{"field": "groupId", "message": "must not be null"}]
       }
       """;
 
@@ -22,7 +22,7 @@ public final class ErrorExamples {
         "status": 401,
         "error": "Unauthorized",
         "message": "Authentication is required to access this resource",
-        "path": "/api/v1/users/me",
+        "path": "/api/v1/bookings",
         "fieldErrors": []
       }
       """;
@@ -34,7 +34,7 @@ public final class ErrorExamples {
         "status": 403,
         "error": "Forbidden",
         "message": "You do not have permission to access this resource",
-        "path": "/api/v1/driver-documents/6b1f0c2e-3d4a-4b5c-8d9e-0f1a2b3c4d5e/review",
+        "path": "/api/v1/fare-rules",
         "fieldErrors": []
       }
       """;
@@ -45,8 +45,8 @@ public final class ErrorExamples {
         "timestamp": "2026-10-29T14:05:00Z",
         "status": 404,
         "error": "Not Found",
-        "message": "Vehicle not found",
-        "path": "/api/v1/drivers/me/vehicles/4c3b2a19-8f7e-4d6c-9b5a-1e2d3c4b5a69",
+        "message": "Booking not found: 4c3b2a19-8f7e-4d6c-9b5a-1e2d3c4b5a69",
+        "path": "/api/v1/bookings/4c3b2a19-8f7e-4d6c-9b5a-1e2d3c4b5a69",
         "fieldErrors": []
       }
       """;
@@ -57,8 +57,8 @@ public final class ErrorExamples {
         "timestamp": "2026-10-29T14:05:00Z",
         "status": 409,
         "error": "Conflict",
-        "message": "Email is already registered",
-        "path": "/api/v1/auth/register",
+        "message": "A booking already exists for requestId 6b1f0c2e-3d4a-4b5c-8d9e-0f1a2b3c4d5e",
+        "path": "/api/v1/bookings",
         "fieldErrors": []
       }
       """;

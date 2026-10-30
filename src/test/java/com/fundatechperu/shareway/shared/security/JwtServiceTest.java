@@ -45,6 +45,19 @@ class JwtServiceTest {
   }
 
   @Test
+  void userIdClaimIsTheUserUuidAsTheExtractedServicesExpect() {
+    String userId =
+        Jwts.parser()
+            .verifyWith(KEY)
+            .build()
+            .parseSignedClaims(jwtService.issue(ANA).value())
+            .getPayload()
+            .get("userId", String.class);
+
+    assertThat(userId).isEqualTo(ANA.id().toString());
+  }
+
+  @Test
   void rejectsTokenSignedWithAnotherKey() {
     JwtService otherService =
         new JwtService(new JwtProperties("another-secret-key-with-at-least-32-bytes!", 60));
