@@ -4,16 +4,19 @@ import com.fundatechperu.shareway.drivermanagement.domain.repository.UserReposit
 import com.fundatechperu.shareway.shared.security.AuthenticatedUser;
 import com.fundatechperu.shareway.shared.security.AuthenticatedUserResolver;
 import com.fundatechperu.shareway.shared.security.UserRole;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnExpression;
 import org.springframework.stereotype.Component;
 
 /**
  * Reloads the user of every request, so a role change (for example PASSENGER to DRIVER) applies
  * without logging in again.
  *
- * <p>A user that is not stored here keeps the claims of its token. When Driver Management moves to
- * its own service this bean leaves the monolith and the claims are used as they are.
+ * <p>A user that is not stored here keeps the claims of its token. When {@code
+ * app.services.driver-management.url} points to the extracted service, {@link
+ * com.fundatechperu.shareway.shared.security.DriverManagementUserResolver} takes its place.
  */
 @Component
+@ConditionalOnExpression("'${app.services.driver-management.url:}'.isBlank()")
 public class CurrentUserResolver implements AuthenticatedUserResolver {
 
   private final UserRepository userRepository;

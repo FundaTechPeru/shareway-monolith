@@ -25,8 +25,8 @@ is extracted to its own service (Strangler Fig, phase C).
 | 2 | Payments & Settlement | Booking & Pricing | `payments.application.PaymentResultsPort` | `payments.infrastructure.integration.InProcessPaymentResultsAdapter` | `PaymentAuthorizationSucceededEvent`, `PaymentAuthorizationFailedEvent` | The REST adapter of #1 turns the HTTP answer into the same saga events; the port is no longer needed |
 | 3 | Booking & Pricing | Payments & Settlement | `booking.domain.service.PaymentsPort#notifyCancellation` | `booking.infrastructure.integration.InProcessPaymentsAdapter` | `BookingCancelledEvent` | `POST /api/v1/internal/events/booking-cancelled` |
 | 4 | Trip Execution (C#, external) | Payments & Settlement | — | — | HTTP | Unchanged: `POST /api/v1/internal/events/trip-completed` with `X-Internal-Api-Key` |
-| 5 | Driver Management | every context | — | `shared.security` | JWT (subject = user UUID, `role` and `email` claims) | Every service validates the same HS256 token with `JWT_SECRET`; Driver Management keeps issuing it |
-| 6 | Driver Management | every context | `shared.security.AuthenticatedUserResolver` | `drivermanagement.infrastructure.security.CurrentUserResolver` | In-process call | Removed: the token claims are used as they are |
+| 5 | Driver Management | every context | — | `shared.security` | JWT (subject and `userId` = user UUID, `role` and `email` claims) | Every service validates the same HS256 token with `JWT_SECRET`; Driver Management keeps issuing it |
+| 6 | Driver Management | every context | `shared.security.AuthenticatedUserResolver` | `drivermanagement.infrastructure.security.CurrentUserResolver` | In-process call | `shared.security.DriverManagementUserResolver`: `GET /api/v1/users/me` with the caller's token (`DRIVER_MANAGEMENT_URL`); the token claims when the service does not answer |
 
 ### 1-3. Booking saga and payments
 

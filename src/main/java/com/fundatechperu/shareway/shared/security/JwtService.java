@@ -16,12 +16,15 @@ import org.springframework.stereotype.Service;
 /**
  * Issues and validates the HS256 access tokens used by every bounded context.
  *
- * <p>Claims: {@code sub} is the user UUID, {@code email} the user email and {@code role} one of
- * {@link UserRole}. A token without a valid UUID subject or role is rejected.
+ * <p>Claims: {@code sub} and {@code userId} are the user UUID, {@code email} the user email and
+ * {@code role} one of {@link UserRole}, the same claims the extracted Driver Management service
+ * issues ({@code userId} is the one Payments &amp; Settlement reads). A token without a valid UUID
+ * subject or role is rejected.
  */
 @Service
 public class JwtService {
 
+  static final String USER_ID_CLAIM = "userId";
   static final String EMAIL_CLAIM = "email";
   static final String ROLE_CLAIM = "role";
 
@@ -39,6 +42,7 @@ public class JwtService {
     String token =
         Jwts.builder()
             .subject(user.id().toString())
+            .claim(USER_ID_CLAIM, user.id().toString())
             .claim(EMAIL_CLAIM, user.email())
             .claim(ROLE_CLAIM, user.role().name())
             .issuedAt(Date.from(now))

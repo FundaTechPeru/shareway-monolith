@@ -99,6 +99,8 @@ events that Booking & Pricing consumes from contexts outside the monolith.
 | `COMMISSION_RATE` | `0.15` | Platform commission over the gross amount of a trip |
 | `PENALTY_RATE` / `PENALTY_WINDOW_MINUTES` | `0.50` / `30` | Penalty charged by Payments & Settlement |
 | `BOOKING_*` | see `application.yaml` | Booking saga timeouts, retries, simulated departure and Booking & Pricing penalty |
+| `DRIVER_MANAGEMENT_URL` | empty | Base URL of the extracted Driver Management service; when set, the current role of each user is asked to it |
+| `SERVICES_TIMEOUT_MS` | `3000` | Connect and read timeout of every call to an extracted service |
 
 ## Tests
 
@@ -161,6 +163,7 @@ Where the plan left room, the simplest option was taken:
   the departure 120 minutes ahead (`BOOKING_DEPARTURE_SIMULATED_OFFSET_MINUTES`).
 - Any authenticated user can read a booking by id; only its passenger can cancel it.
 - `/api/v1/info` is not in the gateway route table, so it is only reachable on the monolith.
+- The Docker image is built by the CI workflow; it was not built on the development machine.
 
 ## Contributing
 
