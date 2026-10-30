@@ -9,8 +9,8 @@ import java.util.UUID;
  * result comes back later as a PaymentAuthorized or PaymentAuthorizationFailed event for the
  * booking saga.
  *
- * <p>Inside the monolith it is implemented with in-process events; when Payments &amp; Settlement
- * is extracted, a REST adapter calls its /api/v1/internal endpoints instead.
+ * <p>Payments &amp; Settlement runs as its own service: the REST adapter calls its
+ * /api/v1/internal endpoints.
  */
 public interface PaymentsPort {
 

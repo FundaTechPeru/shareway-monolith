@@ -26,11 +26,7 @@ class OpenApiGroupsTest {
         .andExpect(status().isOk())
         .andExpect(
             jsonPath("$.urls[*].url")
-                .value(
-                    containsInAnyOrder(
-                        "/v3/api-docs/tripplanning",
-                        "/v3/api-docs/booking",
-                        "/v3/api-docs/payments")));
+                .value(containsInAnyOrder("/v3/api-docs/tripplanning", "/v3/api-docs/booking")));
   }
 
   @Test

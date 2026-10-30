@@ -15,7 +15,6 @@ public class OpenApiGroupsConfig {
 
   public static final String TRIP_PLANNING = "tripplanning";
   public static final String BOOKING = "booking";
-  public static final String PAYMENTS = "payments";
 
   @Bean
   public GroupedOpenApi tripPlanningApi() {
@@ -33,21 +32,6 @@ public class OpenApiGroupsConfig {
         .group(BOOKING)
         .displayName("Booking & Pricing")
         .pathsToMatch("/api/v1/bookings/**", "/api/v1/fares/**", "/api/v1/fare-rules/**")
-        .build();
-  }
-
-  @Bean
-  public GroupedOpenApi paymentsApi() {
-    return GroupedOpenApi.builder()
-        .group(PAYMENTS)
-        .displayName("Payments & Settlement")
-        .pathsToMatch(
-            "/api/v1/payments/**",
-            "/api/v1/payment-methods/**",
-            "/api/v1/settlements/**",
-            "/api/v1/admin/settlements/**",
-            "/api/v1/internal/payments/**",
-            "/api/v1/internal/events/**")
         .build();
   }
 }

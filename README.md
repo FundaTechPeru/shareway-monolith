@@ -12,7 +12,6 @@ in front of it, then each bounded context is extracted back to its own service.
 |---|---|---|---|---|---|
 | Trip Planning & Matching | `tripplanning` | `tpm` | `tripplanning` | `/api/v1/trip-requests`, `/api/v1/driver-availabilities`, `/api/v1/info` | `shareway-trip-planning-matching-service` |
 | Booking & Pricing | `booking` (with `booking.pricing`) | `bp` | `booking` | `/api/v1/bookings`, `/api/v1/fares`, `/api/v1/fare-rules` | `shareway-booking-pricing` |
-| Payments & Settlement | `payments` | `ps` | `payments` | `/api/v1/payments`, `/api/v1/payment-methods`, `/api/v1/settlements`, `/api/v1/admin/settlements`, `/api/v1/internal/**` | `shareway-payments-settlement-service` |
 
 Trip Execution (`shareway-trip-execution-service`, C#) is **not** part of the monolith: the gateway
 routes `/api/v1/trips` straight to it.
@@ -22,8 +21,10 @@ routes `/api/v1/trips` straight to it.
 | Context | Service | Paths now served by the service | Monolith side |
 |---|---|---|---|
 | Driver Management | [`shareway-driver-management-service`](https://github.com/FundaTechPeru/shareway-driver-management-service) | `/api/v1/auth`, `/api/v1/users`, `/api/v1/drivers`, `/api/v1/driver-documents` | Validates its tokens with `JWT_SECRET`; asks it the current role of each user when `DRIVER_MANAGEMENT_URL` is set |
+| Payments & Settlement | [`shareway-payments-settlement-service`](https://github.com/FundaTechPeru/shareway-payments-settlement-service) | `/api/v1/payments`, `/api/v1/payment-methods`, `/api/v1/settlements`, `/api/v1/admin/settlements`, `/api/v1/internal/**` | Booking & Pricing calls its internal endpoints (`PAYMENTS_SETTLEMENT_URL`, required) |
 
-Its tables (`dm` schema) stay in the database, untouched, until the service owns its own database.
+Their tables (`dm` and `ps` schemas) stay in the database, untouched, until each service owns its
+own database. Trip Execution reports completed trips to Payments & Settlement directly.
 
 ## Architecture
 
@@ -36,15 +37,14 @@ com.fundatechperu.shareway
 │   ├── openapi            global info, bearer scheme and one group per context
 │   └── integration        events that cross a context boundary (published language)
 ├── tripplanning           domain · application · infrastructure · interfaces
-├── booking                domain · application · infrastructure · interfaces · pricing
-└── payments               domain · application · infrastructure · interfaces
+└── booking                domain · application · infrastructure · interfaces · pricing
 ```
 
 - **Layers.** Every context keeps the layers it had as a service: `domain` (model, events and the
   ports it needs), `application` (use cases), `infrastructure` (adapters: JPA, storage, gateway,
   messaging) and `interfaces` (REST controllers, in-process listeners).
-- **One database, one schema per context.** PostgreSQL with the `tpm`, `bp` and `ps` schemas (plus
-  the `dm` schema left behind by Driver Management).
+- **One database, one schema per context.** PostgreSQL with the `tpm` and `bp` schemas (plus the
+  `dm` and `ps` schemas left behind by the extracted services).
   Flyway is the only owner of the schema (`ddl-auto=validate`): `V1` creates the schemas and each
   context adds its own scripts. Tables never reference another schema.
 - **Identifiers.** Every id is a UUID, including the references between contexts (`driverId`,
@@ -68,7 +68,7 @@ and H2 for the tests.
 Prerequisites: JDK 25 and Docker.
 
 ```bash
-cp .env.example .env            # then set DB_PASSWORD, JWT_SECRET and INTERNAL_API_KEY
+cp .env.example .env            # then set DB_PASSWORD, JWT_SECRET, INTERNAL_API_KEY and PAYMENTS_SETTLEMENT_URL
 docker compose up --build       # PostgreSQL + the monolith on http://localhost:8080
 ```
 
@@ -78,7 +78,7 @@ variables of `.env` to the process:
 ```bash
 docker compose up -d postgres
 DB_URL=jdbc:postgresql://localhost:5432/shareway DB_PASSWORD=... JWT_SECRET=... \
-INTERNAL_API_KEY=... ./mvnw spring-boot:run
+INTERNAL_API_KEY=... PAYMENTS_SETTLEMENT_URL=http://localhost:8085 ./mvnw spring-boot:run
 ```
 
 The `dev` profile (`SPRING_PROFILES_ACTIVE=dev`) adds `POST /dev/events`, which simulates the
@@ -87,7 +87,7 @@ events that Booking & Pricing consumes from contexts outside the monolith.
 - Swagger UI: http://localhost:8080/swagger-ui.html (choose the context in the selector, log in
   with `POST /api/v1/auth/login` of Driver Management, through the gateway, and paste the
   `accessToken` in **Authorize**)
-- OpenAPI documents: `/v3/api-docs/tripplanning`, `/v3/api-docs/booking`, `/v3/api-docs/payments`
+- OpenAPI documents: `/v3/api-docs/tripplanning`, `/v3/api-docs/booking`
 - Health: http://localhost:8080/actuator/health
 
 ### Configuration
@@ -99,12 +99,12 @@ events that Booking & Pricing consumes from contexts outside the monolith.
 | `DB_USER` / `DB_PASSWORD` | `shareway` / `shareway` | Database credentials (development defaults) |
 | `JWT_SECRET` | none, required | HS256 secret of at least 32 bytes, shared with the gateway |
 | `JWT_EXPIRATION_MINUTES` | `60` | Lifetime of the access tokens |
-| `INTERNAL_API_KEY` | none, required | Key of `/api/v1/internal/**` |
+| `INTERNAL_API_KEY` | none, required | Service-to-service key; also sent to Payments & Settlement unless `PAYMENTS_SETTLEMENT_API_KEY` is set |
 | `CORS_ALLOWED_ORIGINS` | `http://localhost:4200,http://localhost:5173,http://localhost:3000` | Allowed browser origins |
-| `COMMISSION_RATE` | `0.15` | Platform commission over the gross amount of a trip |
-| `PENALTY_RATE` / `PENALTY_WINDOW_MINUTES` | `0.50` / `30` | Penalty charged by Payments & Settlement |
 | `BOOKING_*` | see `application.yaml` | Booking saga timeouts, retries, simulated departure and Booking & Pricing penalty |
 | `DRIVER_MANAGEMENT_URL` | empty | Base URL of the extracted Driver Management service; when set, the current role of each user is asked to it, otherwise the token claims are used as they are |
+| `PAYMENTS_SETTLEMENT_URL` | none, required | Base URL of the Payments & Settlement service; Booking & Pricing asks it for payment authorizations and reports cancellations |
+| `PAYMENTS_SETTLEMENT_API_KEY` | `INTERNAL_API_KEY` | `X-Internal-Api-Key` of the internal endpoints of Payments & Settlement |
 | `SERVICES_TIMEOUT_MS` | `3000` | Connect and read timeout of every call to an extracted service |
 
 ## Tests
@@ -114,11 +114,10 @@ events that Booking & Pricing consumes from contexts outside the monolith.
 ```
 
 The tests need no database server: they use H2 in PostgreSQL mode, and Flyway creates the four
-schemas as in production. They include the Cucumber acceptance suite of Payments & Settlement
-(`features/payments`), the unit and
-integration tests of Booking & Pricing (including its concurrency checks) and Trip Planning,
-the in-process integration between booking and payments, and a check that every OpenAPI
-operation is documented with its responses and examples.
+schemas as in production. They include the unit and integration tests of Booking & Pricing
+(including its concurrency checks) and Trip Planning, the booking saga against a stub of
+Payments & Settlement (`BookingPaymentsHttpIntegrationTest`), the REST adapters of the extracted
+services, and a check that every OpenAPI operation is documented with its responses and examples.
 
 ## Decisions taken while merging
 
@@ -137,8 +136,9 @@ Where the plan left room, the simplest option was taken:
   `passengerId` and `driverId` still come in the body as in the original API. Its service
   description moved from `/` and `/api` to `/api/v1/info`. Its application service takes commands
   instead of the web DTOs.
-- **In-process payments.** The authorization request did not name a card: Payments & Settlement
-  uses the first active card of the passenger. `BookingCancelled` now carries its reason.
+- **Payments.** The authorization request did not name a card: Booking & Pricing lists the cards
+  of the passenger with the passenger's token and uses the first active one. `BookingCancelled`
+  now carries its reason.
 - **Imports.** The domain entities of Driver Management, Payments & Settlement and Trip Planning
   are also their JPA entities, so the "domain model" commits bring the repository adapters and the
   Flyway scripts along to keep the application bootable.

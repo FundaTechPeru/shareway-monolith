@@ -43,22 +43,20 @@ app:
     secret: ${JWT_SECRET}
     expiration-minutes: ${JWT_EXPIRATION_MINUTES:60}
   internal:
-    # Key of the service-to-service endpoints under /api/v1/internal. No default on purpose.
+    # Service-to-service key: guards /api/v1/internal here and is sent to the internal endpoints of
+    # the extracted services unless they have their own. No default on purpose.
     api-key: ${INTERNAL_API_KEY}
-  payments:
-    # Platform commission over the gross amount of a trip.
-    commission-rate: ${COMMISSION_RATE:0.15}
-    # Share of the authorized amount charged for a late cancellation or a no-show.
-    penalty-rate: ${PENALTY_RATE:0.50}
-    penalty-window-minutes: ${PENALTY_WINDOW_MINUTES:30}
   cors:
     allowed-origins: ${CORS_ALLOWED_ORIGINS:http://localhost:4200,http://localhost:5173,http://localhost:3000}
   services:
-    # Base URLs of the extracted services (Strangler Fig). Empty means the context still runs here,
-    # except for Driver Management, which already left: without its URL the token claims are used
-    # as they are.
+    # Base URLs of the extracted services (Strangler Fig). Without the Driver Management URL the
+    # token claims are used as they are; Payments & Settlement is required by Booking & Pricing.
     driver-management:
       url: ${DRIVER_MANAGEMENT_URL:}
+    payments-settlement:
+      url: ${PAYMENTS_SETTLEMENT_URL}
+      # X-Internal-Api-Key of its /api/v1/internal endpoints; empty uses INTERNAL_API_KEY.
+      api-key: ${PAYMENTS_SETTLEMENT_API_KEY:}
     # Connect and read timeout of every call to an extracted service.
     timeout-ms: ${SERVICES_TIMEOUT_MS:3000}
 

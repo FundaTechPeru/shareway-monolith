@@ -13,6 +13,10 @@ app:
     secret: test-only-shareway-monolith-jwt-secret-with-32-bytes
   internal:
     api-key: test-internal-api-key
+  services:
+    # Nothing listens here: tests that book either mock the PaymentsPort or start a stub.
+    payments-settlement:
+      url: http://127.0.0.1:9
 
 booking:
   saga:
