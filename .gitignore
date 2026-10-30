@@ -34,3 +34,6 @@ build/
 
 ### Local document storage ###
 /storage/
+
+### Local environment ###
+.env
