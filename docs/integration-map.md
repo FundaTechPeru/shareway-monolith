@@ -21,12 +21,13 @@ is extracted to its own service (Strangler Fig, phase C).
 
 | # | From | To | Port (owner) | In-process adapter | Message | After extraction |
 |---|---|---|---|---|---|---|
-| 1 | Booking & Pricing | Payments & Settlement | `booking.domain.service.PaymentsPort#requestAuthorization` | `booking.infrastructure.integration.InProcessPaymentsAdapter` | `PaymentAuthorizationRequestedEvent` | `POST /api/v1/internal/payments/authorizations` (201/200 authorized, 402/404/503 failed) |
+| 1 | Booking & Pricing | Payments & Settlement | `booking.domain.service.PaymentsPort#requestAuthorization` | `booking.infrastructure.integration.InProcessPaymentsAdapter` | `PaymentAuthorizationRequestedEvent` | `booking.infrastructure.integration.HttpPaymentsAdapter` (`PAYMENTS_SETTLEMENT_URL`): `GET /api/v1/payment-methods` with the passenger token for the card, then `POST /api/v1/internal/payments/authorizations` (201/200 authorized, 402/404/503 failed) |
 | 2 | Payments & Settlement | Booking & Pricing | `payments.application.PaymentResultsPort` | `payments.infrastructure.integration.InProcessPaymentResultsAdapter` | `PaymentAuthorizationSucceededEvent`, `PaymentAuthorizationFailedEvent` | The REST adapter of #1 turns the HTTP answer into the same saga events; the port is no longer needed |
-| 3 | Booking & Pricing | Payments & Settlement | `booking.domain.service.PaymentsPort#notifyCancellation` | `booking.infrastructure.integration.InProcessPaymentsAdapter` | `BookingCancelledEvent` | `POST /api/v1/internal/events/booking-cancelled` |
+| 3 | Booking & Pricing | Payments & Settlement | `booking.domain.service.PaymentsPort#notifyCancellation` | `booking.infrastructure.integration.InProcessPaymentsAdapter` | `BookingCancelledEvent` | `HttpPaymentsAdapter`: `POST /api/v1/internal/events/booking-cancelled` (404/409 ignored, as in process) |
 | 4 | Trip Execution (C#, external) | Payments & Settlement | — | — | HTTP | Unchanged: `POST /api/v1/internal/events/trip-completed` with `X-Internal-Api-Key` |
-| 5 | Driver Management | every context | — | `shared.security` | JWT (subject = user UUID, `role` and `email` claims) | Every service validates the same HS256 token with `JWT_SECRET`; Driver Management keeps issuing it |
-| 6 | Driver Management | every context | `shared.security.AuthenticatedUserResolver` | `drivermanagement.infrastructure.security.CurrentUserResolver` | In-process call | Removed: the token claims are used as they are |
+| 5 | Driver Management | every context | — | `shared.security` | JWT (subject and `userId` = user UUID, `role` and `email` claims) | Every service validates the same HS256 token with `JWT_SECRET`; Driver Management keeps issuing it |
+| 7 | Booking & Pricing | Trip Planning & Matching | `booking.domain.service.TripRequestsPort` | `booking.infrastructure.integration.InProcessTripRequestsAdapter` over `shared.integration.TripRequestDirectory` (implemented by `tripplanning.infrastructure.integration.TripRequestDirectoryAdapter`), removed with the module | In-process query before the booking transaction | `booking.infrastructure.integration.HttpTripRequestsAdapter` (`TRIP_PLANNING_MATCHING_URL`): `GET /api/v1/trip-requests` and look for the id and the passenger; 503 when the service does not answer |
+| 6 | Driver Management | every context | `shared.security.AuthenticatedUserResolver` | `drivermanagement.infrastructure.security.CurrentUserResolver` (removed with the module) | In-process call | `shared.security.DriverManagementUserResolver`: `GET /api/v1/users/me` with the caller's token (`DRIVER_MANAGEMENT_URL`); the token claims when the service does not answer |
 
 ### 1-3. Booking saga and payments
 
@@ -65,6 +66,13 @@ Decisions:
 - `BookingCancelled` gained a `reason` so Payments & Settlement can apply its policy: only
   `PASSENGER_CANCELLED` and `NO_SHOW` can be penalized; platform reasons (`NO_DRIVER_AVAILABLE`,
   `PAYMENT_TIMEOUT`, `PAYMENT_FAILED`) void the authorization.
+- Over HTTP, the internal authorization needs the card id, so `HttpPaymentsAdapter` lists the
+  cards with the passenger's token, which is available because the authorization starts inside
+  `POST /api/v1/bookings`. The service only accepts the reasons it can penalize plus
+  `NO_DRIVER_AVAILABLE`, so the other platform reasons are sent as `NO_DRIVER_AVAILABLE` (same
+  effect: the authorization is voided). The calls run after the booking commits and are not
+  retried: a lost authorization answer ends in the saga payment timeout, and a lost cancellation
+  leaves the authorization to expire at the provider.
 
 ### 4. Trip Execution
 
@@ -86,6 +94,12 @@ can only be simulated with `POST /dev/events` under the `dev` profile.
 | Booking & Pricing | `SeatHeld`, `BookingConfirmed`, `FinalFareCalculated` | None (BookingConfirmed carries the boarding codes for a future notification service) |
 
 ## Extraction checklist (phase C)
+
+Extracted: **Driver Management** (rows 5 and 6), **Payments & Settlement** (rows 1 to 4:
+`HttpPaymentsAdapter` is now the only `PaymentsPort`, and the in-process adapters, listeners and
+events of rows 1 to 3 left with the module) and **Trip Planning & Matching** (row 7:
+`HttpTripRequestsAdapter` is now the only `TripRequestsPort`). Only Booking & Pricing is left in
+the monolith.
 
 1. Add a REST client adapter behind the outbound port of the caller (for Payments & Settlement:
    `PaymentsPort` calling the internal endpoints with `X-Internal-Api-Key`).

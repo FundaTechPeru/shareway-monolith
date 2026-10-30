@@ -35,26 +35,7 @@ class OpenApiDocumentationTest {
   static Stream<Arguments> groups() {
     return Stream.of(
         Arguments.of(
-            "drivermanagement",
-            List.of(
-                "/api/v1/auth/",
-                "/api/v1/users/",
-                "/api/v1/drivers/",
-                "/api/v1/driver-documents/")),
-        Arguments.of(
-            "tripplanning",
-            List.of("/api/v1/trip-requests", "/api/v1/driver-availabilities", "/api/v1/info")),
-        Arguments.of(
-            "booking", List.of("/api/v1/bookings", "/api/v1/fares/", "/api/v1/fare-rules")),
-        Arguments.of(
-            "payments",
-            List.of(
-                "/api/v1/payments/",
-                "/api/v1/payment-methods",
-                "/api/v1/settlements/",
-                "/api/v1/admin/settlements",
-                "/api/v1/internal/payments/",
-                "/api/v1/internal/events/")));
+            "booking", List.of("/api/v1/bookings", "/api/v1/fares/", "/api/v1/fare-rules")));
   }
 
   @ParameterizedTest(name = "{0}")

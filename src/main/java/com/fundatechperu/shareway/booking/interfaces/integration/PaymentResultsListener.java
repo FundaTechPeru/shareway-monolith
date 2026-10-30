@@ -14,9 +14,9 @@ import org.springframework.transaction.event.TransactionalEventListener;
 import org.springframework.transaction.support.TransactionTemplate;
 
 /**
- * Feeds the authorization results of Payments &amp; Settlement into the booking saga, once the
- * payment transaction commits. Each result is handled in a new transaction of its own, because the
- * one that published it is already committed.
+ * Feeds the authorization results of Payments &amp; Settlement, published by the {@code
+ * HttpPaymentsAdapter}, into the booking saga once the transaction that carries them commits. Each
+ * result is handled in a new transaction of its own, because that one is already committed.
  */
 @Component
 public class PaymentResultsListener {

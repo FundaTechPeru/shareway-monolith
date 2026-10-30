@@ -5,9 +5,12 @@ import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.BDDMockito.given;
 
 import com.fundatechperu.shareway.booking.application.service.SagaTimeoutService;
 import com.fundatechperu.shareway.booking.domain.service.PaymentsPort;
+import com.fundatechperu.shareway.booking.domain.service.TripRequestsPort;
 import com.fundatechperu.shareway.booking.infrastructure.provider.SimulatedDepartureTimeProvider;
 import com.fundatechperu.shareway.booking.infrastructure.security.BoardingCodeHasher;
 import com.fundatechperu.shareway.booking.shared.events.BoardingValidated;
@@ -73,6 +76,9 @@ class Sprint2IntegrationTest extends AbstractBookingIntegrationTest {
   /** Payments &amp; Settlement is replaced: these tests cover Booking &amp; Pricing alone. */
   @MockitoBean private PaymentsPort paymentsPort;
 
+  /** Every requestId counts as a trip request of the passenger. */
+  @MockitoBean private TripRequestsPort tripRequestsPort;
+
   @Autowired private ObjectMapper objectMapper;
 
   @Autowired private EventPublisher eventPublisher;
@@ -87,6 +93,7 @@ class Sprint2IntegrationTest extends AbstractBookingIntegrationTest {
 
   @BeforeEach
   void isolateBookingData() {
+    given(tripRequestsPort.belongsTo(any(), any())).willReturn(true);
     // fare_rules is kept: it carries the seeded rule version 1.
     deleteBookingData();
     recorder.clear();
