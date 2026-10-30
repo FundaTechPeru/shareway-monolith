@@ -168,6 +168,11 @@ Where the plan left room, the simplest option was taken:
 - A booking needs a trip request of the same passenger (`requestId`), checked in Trip Planning &
   Matching (404 otherwise, 503 when it cannot answer). That service has no endpoint for one trip
   request yet, so the REST adapter reads the whole list.
+- **UUID contract of the extracted services.** The adapters follow the UUID version of each
+  service. Driver Management and Payments & Settlement already use UUID ids; Trip Planning &
+  Matching uses UUID for its own ids but still answers `passengerId` and `driverId` as numbers, so
+  the trip request check of a booking fails (404) until that service finishes its migration. The
+  adapters were tested against stubs that follow the UUID contract.
 - The Docker image is built by the CI workflow; it was not built on the development machine.
 
 ## Contributing
