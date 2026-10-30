@@ -10,7 +10,6 @@ in front of it, then each bounded context is extracted back to its own service.
 
 | Context | Package | Schema | OpenAPI group | Paths | Imported from |
 |---|---|---|---|---|---|
-| Trip Planning & Matching | `tripplanning` | `tpm` | `tripplanning` | `/api/v1/trip-requests`, `/api/v1/driver-availabilities`, `/api/v1/info` | `shareway-trip-planning-matching-service` |
 | Booking & Pricing | `booking` (with `booking.pricing`) | `bp` | `booking` | `/api/v1/bookings`, `/api/v1/fares`, `/api/v1/fare-rules` | `shareway-booking-pricing` |
 
 Trip Execution (`shareway-trip-execution-service`, C#) is **not** part of the monolith: the gateway
@@ -22,9 +21,10 @@ routes `/api/v1/trips` straight to it.
 |---|---|---|---|
 | Driver Management | [`shareway-driver-management-service`](https://github.com/FundaTechPeru/shareway-driver-management-service) | `/api/v1/auth`, `/api/v1/users`, `/api/v1/drivers`, `/api/v1/driver-documents` | Validates its tokens with `JWT_SECRET`; asks it the current role of each user when `DRIVER_MANAGEMENT_URL` is set |
 | Payments & Settlement | [`shareway-payments-settlement-service`](https://github.com/FundaTechPeru/shareway-payments-settlement-service) | `/api/v1/payments`, `/api/v1/payment-methods`, `/api/v1/settlements`, `/api/v1/admin/settlements`, `/api/v1/internal/**` | Booking & Pricing calls its internal endpoints (`PAYMENTS_SETTLEMENT_URL`, required) |
+| Trip Planning & Matching | [`shareway-trip-planning-matching-service`](https://github.com/FundaTechPeru/shareway-trip-planning-matching-service) | `/api/v1/trip-requests`, `/api/v1/driver-availabilities` | Booking & Pricing checks the trip request of each booking there (`TRIP_PLANNING_MATCHING_URL`, required) |
 
-Their tables (`dm` and `ps` schemas) stay in the database, untouched, until each service owns its
-own database. Trip Execution reports completed trips to Payments & Settlement directly.
+Their tables (`dm`, `ps` and `tpm` schemas) stay in the database, untouched, until each service
+owns its own database. Trip Execution reports completed trips to Payments & Settlement directly.
 
 ## Architecture
 
@@ -36,26 +36,25 @@ com.fundatechperu.shareway
 │   ├── exception          not found (404), conflict (409), domain validation (400)
 │   ├── openapi            global info, bearer scheme and one group per context
 │   └── integration        events that cross a context boundary (published language)
-├── tripplanning           domain · application · infrastructure · interfaces
 └── booking                domain · application · infrastructure · interfaces · pricing
 ```
 
 - **Layers.** Every context keeps the layers it had as a service: `domain` (model, events and the
   ports it needs), `application` (use cases), `infrastructure` (adapters: JPA, storage, gateway,
   messaging) and `interfaces` (REST controllers, in-process listeners).
-- **One database, one schema per context.** PostgreSQL with the `tpm` and `bp` schemas (plus the
-  `dm` and `ps` schemas left behind by the extracted services).
+- **One database, one schema per context.** PostgreSQL with the `bp` schema (plus the `dm`, `ps`
+  and `tpm` schemas left behind by the extracted services).
   Flyway is the only owner of the schema (`ddl-auto=validate`): `V1` creates the schemas and each
   context adds its own scripts. Tables never reference another schema.
 - **Identifiers.** Every id is a UUID, including the references between contexts (`driverId`,
   `passengerId`, `bookingId`, `tripId`…) and the JWT subject.
 - **Security.** One filter chain in `shared.security`. The extracted Driver Management service
-  issues the tokens at login; every request is authenticated by the same filter. Each context contributes its role rules with
-  a `SecurityRules` bean. Service-to-service endpoints under `/api/v1/internal/**` take the
+  issues the tokens at login; every request is authenticated by the same filter. Each context
+  contributes its role rules with a `SecurityRules` bean. Service-to-service endpoints under `/api/v1/internal/**` take the
   `X-Internal-Api-Key` header instead of a token.
-- **Integration.** Contexts never call each other's classes. They use ports implemented with Spring
-  events delivered after commit, ready to be replaced by HTTP clients when a context is extracted:
-  see [docs/integration-map.md](docs/integration-map.md).
+- **Integration.** Contexts never call each other's classes. Booking & Pricing reaches the
+  extracted services through its ports (`PaymentsPort`, `TripRequestsPort`), now implemented with
+  HTTP clients: see [docs/integration-map.md](docs/integration-map.md).
 
 ## Tech stack
 
@@ -68,7 +67,7 @@ and H2 for the tests.
 Prerequisites: JDK 25 and Docker.
 
 ```bash
-cp .env.example .env            # then set DB_PASSWORD, JWT_SECRET, INTERNAL_API_KEY and PAYMENTS_SETTLEMENT_URL
+cp .env.example .env            # then set the secrets and the URLs of the extracted services
 docker compose up --build       # PostgreSQL + the monolith on http://localhost:8080
 ```
 
@@ -78,7 +77,8 @@ variables of `.env` to the process:
 ```bash
 docker compose up -d postgres
 DB_URL=jdbc:postgresql://localhost:5432/shareway DB_PASSWORD=... JWT_SECRET=... \
-INTERNAL_API_KEY=... PAYMENTS_SETTLEMENT_URL=http://localhost:8085 ./mvnw spring-boot:run
+INTERNAL_API_KEY=... PAYMENTS_SETTLEMENT_URL=http://localhost:8085 \
+TRIP_PLANNING_MATCHING_URL=http://localhost:8083 ./mvnw spring-boot:run
 ```
 
 The `dev` profile (`SPRING_PROFILES_ACTIVE=dev`) adds `POST /dev/events`, which simulates the
@@ -87,7 +87,7 @@ events that Booking & Pricing consumes from contexts outside the monolith.
 - Swagger UI: http://localhost:8080/swagger-ui.html (choose the context in the selector, log in
   with `POST /api/v1/auth/login` of Driver Management, through the gateway, and paste the
   `accessToken` in **Authorize**)
-- OpenAPI documents: `/v3/api-docs/tripplanning`, `/v3/api-docs/booking`
+- OpenAPI document: `/v3/api-docs/booking`
 - Health: http://localhost:8080/actuator/health
 
 ### Configuration
@@ -105,7 +105,7 @@ events that Booking & Pricing consumes from contexts outside the monolith.
 | `DRIVER_MANAGEMENT_URL` | empty | Base URL of the extracted Driver Management service; when set, the current role of each user is asked to it, otherwise the token claims are used as they are |
 | `PAYMENTS_SETTLEMENT_URL` | none, required | Base URL of the Payments & Settlement service; Booking & Pricing asks it for payment authorizations and reports cancellations |
 | `PAYMENTS_SETTLEMENT_API_KEY` | `INTERNAL_API_KEY` | `X-Internal-Api-Key` of the internal endpoints of Payments & Settlement |
-| `TRIP_PLANNING_MATCHING_URL` | empty | Base URL of the extracted Trip Planning & Matching service; when set, Booking & Pricing checks the trip request of each booking there |
+| `TRIP_PLANNING_MATCHING_URL` | none, required | Base URL of the Trip Planning & Matching service; Booking & Pricing checks the trip request of each booking there |
 | `SERVICES_TIMEOUT_MS` | `3000` | Connect and read timeout of every call to an extracted service |
 
 ## Tests
@@ -116,7 +116,7 @@ events that Booking & Pricing consumes from contexts outside the monolith.
 
 The tests need no database server: they use H2 in PostgreSQL mode, and Flyway creates the four
 schemas as in production. They include the unit and integration tests of Booking & Pricing
-(including its concurrency checks) and Trip Planning, the booking saga against a stub of
+(including its concurrency checks), the booking saga against a stub of
 Payments & Settlement (`BookingPaymentsHttpIntegrationTest`), the REST adapters of the extracted
 services, and a check that every OpenAPI operation is documented with its responses and examples.
 
@@ -133,10 +133,9 @@ Where the plan left room, the simplest option was taken:
   token are used.
 - **Errors.** All contexts answer with the Driver Management error body (`timestamp`, `status`,
   `error`, `message`, `path`, `fieldErrors`); Booking & Pricing used a smaller one.
-- **Trip Planning** had no authentication: its endpoints now require a token, but the
-  `passengerId` and `driverId` still come in the body as in the original API. Its service
-  description moved from `/` and `/api` to `/api/v1/info`. Its application service takes commands
-  instead of the web DTOs.
+- **Trip Planning** had no authentication. Inside the monolith its endpoints required a token;
+  as its own service again, the gateway is the only token check in front of it, and the
+  `passengerId` and `driverId` still come in the body as in the original API.
 - **Payments.** The authorization request did not name a card: Booking & Pricing lists the cards
   of the passenger with the passenger's token and uses the first active one. `BookingCancelled`
   now carries its reason.
@@ -152,11 +151,9 @@ Where the plan left room, the simplest option was taken:
 ## Known issues
 
 - **DriverAvailability exists twice (US-19).** Driver Management keeps the weekly schedule of a
-  driver (its own service, `/api/v1/drivers/me/availability`) and Trip Planning keeps
-  dated availability for matching (`tpm.driver_availabilities`, `/api/v1/driver-availabilities`).
-  Both are kept on purpose: the schemas avoid the table collision and the Trip Planning entity has
-  its own JPA name (`TripPlanningDriverAvailability`). Matching does not read the weekly schedule
-  yet.
+  driver (`/api/v1/drivers/me/availability`) and Trip Planning & Matching keeps dated availability
+  for matching (`/api/v1/driver-availabilities`), each in its own service. Matching does not read
+  the weekly schedule yet.
 - **Two penalty policies.** Booking & Pricing records a late-cancellation penalty of 20 % of the
   estimated fare (`bp.penalties`, minimum 1.00) and Payments & Settlement charges 50 % of the
   authorized amount (`ps.penalties`). The schemas separate the tables, but only the second one is
@@ -171,7 +168,6 @@ Where the plan left room, the simplest option was taken:
 - A booking needs a trip request of the same passenger (`requestId`), checked in Trip Planning &
   Matching (404 otherwise, 503 when it cannot answer). That service has no endpoint for one trip
   request yet, so the REST adapter reads the whole list.
-- `/api/v1/info` is not in the gateway route table, so it is only reachable on the monolith.
 - The Docker image is built by the CI workflow; it was not built on the development machine.
 
 ## Contributing

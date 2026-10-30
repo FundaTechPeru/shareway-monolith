@@ -6,8 +6,7 @@ import java.util.UUID;
  * Outbound port to Trip Planning &amp; Matching: the {@code requestId} of a booking is a trip
  * request of that context, and only the passenger who asked for it can book with it.
  *
- * <p>Inside the monolith it is answered in process; when Trip Planning &amp; Matching is extracted,
- * a REST adapter asks the service instead.
+ * <p>Trip Planning &amp; Matching runs as its own service: the REST adapter asks it.
  */
 public interface TripRequestsPort {
 

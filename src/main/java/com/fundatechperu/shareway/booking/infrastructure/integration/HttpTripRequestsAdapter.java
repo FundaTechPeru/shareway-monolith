@@ -7,7 +7,6 @@ import java.time.Duration;
 import java.util.List;
 import java.util.UUID;
 import org.springframework.beans.factory.annotation.Value;
-import org.springframework.boot.autoconfigure.condition.ConditionalOnExpression;
 import org.springframework.core.ParameterizedTypeReference;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.client.JdkClientHttpRequestFactory;
@@ -18,8 +17,8 @@ import org.springframework.web.context.request.RequestContextHolder;
 import org.springframework.web.context.request.ServletRequestAttributes;
 
 /**
- * {@link TripRequestsPort} for the extracted Trip Planning &amp; Matching service, active when
- * {@code app.services.trip-planning-matching.url} is set.
+ * {@link TripRequestsPort} for the Trip Planning &amp; Matching service at {@code
+ * app.services.trip-planning-matching.url}.
  *
  * <p>The service has no endpoint for a single trip request yet, so the adapter reads {@code GET
  * /api/v1/trip-requests} and looks for the id. The caller's token is passed along in case the
@@ -27,7 +26,6 @@ import org.springframework.web.context.request.ServletRequestAttributes;
  * of the service.
  */
 @Component
-@ConditionalOnExpression("!'${app.services.trip-planning-matching.url:}'.isBlank()")
 public class HttpTripRequestsAdapter implements TripRequestsPort {
 
   private final RestClient restClient;
