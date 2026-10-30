@@ -57,6 +57,9 @@ app:
       url: ${PAYMENTS_SETTLEMENT_URL}
       # X-Internal-Api-Key of its /api/v1/internal endpoints; empty uses INTERNAL_API_KEY.
       api-key: ${PAYMENTS_SETTLEMENT_API_KEY:}
+    trip-planning-matching:
+      # Empty while Trip Planning & Matching runs in the monolith.
+      url: ${TRIP_PLANNING_MATCHING_URL:}
     # Connect and read timeout of every call to an extracted service.
     timeout-ms: ${SERVICES_TIMEOUT_MS:3000}
 

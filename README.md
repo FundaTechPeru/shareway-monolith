@@ -105,6 +105,7 @@ events that Booking & Pricing consumes from contexts outside the monolith.
 | `DRIVER_MANAGEMENT_URL` | empty | Base URL of the extracted Driver Management service; when set, the current role of each user is asked to it, otherwise the token claims are used as they are |
 | `PAYMENTS_SETTLEMENT_URL` | none, required | Base URL of the Payments & Settlement service; Booking & Pricing asks it for payment authorizations and reports cancellations |
 | `PAYMENTS_SETTLEMENT_API_KEY` | `INTERNAL_API_KEY` | `X-Internal-Api-Key` of the internal endpoints of Payments & Settlement |
+| `TRIP_PLANNING_MATCHING_URL` | empty | Base URL of the extracted Trip Planning & Matching service; when set, Booking & Pricing checks the trip request of each booking there |
 | `SERVICES_TIMEOUT_MS` | `3000` | Connect and read timeout of every call to an extracted service |
 
 ## Tests
@@ -167,6 +168,9 @@ Where the plan left room, the simplest option was taken:
 - **Simulated data.** Booking & Pricing quotes every group with a fake 12 km distance and assumes
   the departure 120 minutes ahead (`BOOKING_DEPARTURE_SIMULATED_OFFSET_MINUTES`).
 - Any authenticated user can read a booking by id; only its passenger can cancel it.
+- A booking needs a trip request of the same passenger (`requestId`), checked in Trip Planning &
+  Matching (404 otherwise, 503 when it cannot answer). That service has no endpoint for one trip
+  request yet, so the REST adapter reads the whole list.
 - `/api/v1/info` is not in the gateway route table, so it is only reachable on the monolith.
 - The Docker image is built by the CI workflow; it was not built on the development machine.
 

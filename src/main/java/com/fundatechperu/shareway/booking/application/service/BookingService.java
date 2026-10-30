@@ -6,7 +6,9 @@ import com.fundatechperu.shareway.booking.application.dto.response.CancellationR
 import com.fundatechperu.shareway.booking.domain.exception.BookingNotFoundException;
 import com.fundatechperu.shareway.booking.domain.exception.InvalidBookingRequestException;
 import com.fundatechperu.shareway.booking.domain.exception.NoSeatsAvailableException;
+import com.fundatechperu.shareway.booking.domain.exception.TripRequestNotFoundException;
 import com.fundatechperu.shareway.booking.domain.repository.BookingRepository;
+import com.fundatechperu.shareway.booking.domain.service.TripRequestsPort;
 import java.util.UUID;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.dao.CannotAcquireLockException;
@@ -22,16 +24,19 @@ import org.springframework.transaction.annotation.Transactional;
 public class BookingService {
   private final BookingTransactionalService transactionalService;
   private final BookingRepository bookingRepository;
+  private final TripRequestsPort tripRequests;
   private final int maxAttempts;
   private final long backoffMs;
 
   public BookingService(
       BookingTransactionalService transactionalService,
       BookingRepository bookingRepository,
+      TripRequestsPort tripRequests,
       @Value("${booking.reservation.max-attempts:3}") int maxAttempts,
       @Value("${booking.reservation.backoff-ms:20}") long backoffMs) {
     this.transactionalService = transactionalService;
     this.bookingRepository = bookingRepository;
+    this.tripRequests = tripRequests;
     this.maxAttempts = maxAttempts;
     this.backoffMs = backoffMs;
   }
@@ -40,6 +45,10 @@ public class BookingService {
    * Runs the reservation transaction, retrying on optimistic-lock failures. After the last attempt
    * the answer is 409 "El viaje ya no tiene asientos disponibles." for both cases: no seats left
    * and contention over the same seat.
+   *
+   * <p>The requestId must be a trip request of the passenger in Trip Planning &amp; Matching (404
+   * otherwise). It is checked before the transaction, so the database is never held while that
+   * context answers.
    */
   public BookingResponse createBooking(
       CreateBookingRequest request, UUID passengerId, String idempotencyKey) {
@@ -48,6 +57,9 @@ public class BookingService {
     }
     if (passengerId == null) {
       throw new InvalidBookingRequestException("Authenticated passenger is required");
+    }
+    if (!tripRequests.belongsTo(request.getRequestId(), passengerId)) {
+      throw new TripRequestNotFoundException(request.getRequestId());
     }
     for (int attempt = 1; attempt <= maxAttempts; attempt++) {
       try {
